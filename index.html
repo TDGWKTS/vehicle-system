@@ -219,14 +219,14 @@ async function loadUserList() {
             const select = document.getElementById('userId');
             select.innerHTML = '<option value="">-- 請選擇用戶 --</option>';
             
-            // 根據角色過濾用戶（使用 role 欄位，而不是 type）
+            // 根據角色過濾用戶（超級管理員同時出現在兩個模式）
             const filteredUsers = result.users.filter(u => {
                 if (currentRole === 'fehd') {
-                    // 食環署模式：顯示區域主管 或 超級管理員
+                    // 食環署模式：區域主管 或 超級管理員
                     return u.role === '區域主管' || u.role === '超級管理員';
                 } else {
-                    // 轉運站模式：顯示轉運站職員
-                    return u.role === '轉運站職員';
+                    // 轉運站模式：轉運站職員 或 超級管理員
+                    return u.role === '轉運站職員' || u.role === '超級管理員';
                 }
             });
             
