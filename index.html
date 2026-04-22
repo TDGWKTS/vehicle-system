@@ -206,36 +206,46 @@
         loader.style.display = show ? 'flex' : 'none';
     }
     
-    // ==================== 動態載入用戶列表（只顯示對應角色的用戶） ====================
-    async function loadUserList() {
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'getUserList' })
-            });
-            const result = await response.json();
+    // ==================== 動態載入用戶列表（根據角色過濾） ====================
+async function loadUserList() {
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getUserList' })
+        });
+        const result = await response.json();
+        
+        if (result.success && result.users) {
+            const select = document.getElementById('userId');
+            select.innerHTML = '<option value="">-- 請選擇用戶 --</option>';
             
-            if (result.success && result.users) {
-                const select = document.getElementById('userId');
-                select.innerHTML = '<option value="">-- 請選擇用戶 --</option>';
-                
-                // 根據角色過濾用戶
-                const filteredUsers = result.users.filter(u => u.type === currentRole);
-                
-                filteredUsers.forEach(u => {
-                    select.innerHTML += `<option value="${u.id}">${u.id}</option>`;
-                });
-                
-                if (filteredUsers.length === 0) {
-                    select.innerHTML = '<option value="">-- 暫無用戶，請聯絡管理員 --</option>';
+            // 根據角色過濾用戶（使用 role 欄位，而不是 type）
+            const filteredUsers = result.users.filter(u => {
+                if (currentRole === 'fehd') {
+                    // 食環署模式：顯示區域主管 或 超級管理員
+                    return u.role === '區域主管' || u.role === '超級管理員';
+                } else {
+                    // 轉運站模式：顯示轉運站職員
+                    return u.role === '轉運站職員';
                 }
-            } else {
-                console.error("載入用戶列表失敗", result.msg);
+            });
+            
+            filteredUsers.forEach(u => {
+                select.innerHTML += `<option value="${u.id}">${u.id}</option>`;
+            });
+            
+            if (filteredUsers.length === 0) {
+                select.innerHTML = '<option value="">-- 暫無用戶，請聯絡管理員 --</option>';
             }
-        } catch (err) {
-            console.error("網路錯誤", err);
+        } else {
+            console.error("載入用戶列表失敗", result.msg);
+            document.getElementById('userId').innerHTML = '<option value="">-- 載入失敗，請刷新 --</option>';
         }
+    } catch (err) {
+        console.error("網路錯誤", err);
+        document.getElementById('userId').innerHTML = '<option value="">-- 網路錯誤 --</option>';
     }
+}
     
     // ==================== 登入 ====================
     async function doLogin() {
