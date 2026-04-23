@@ -321,6 +321,12 @@ async function loadUserList() {
 async function loadVehicles() {
     if (!currentSession) return;
     
+    // 強制超級管理員可看所有區域
+    if (currentSession.userId === "WKTS" || currentSession.role === "超級管理員") {
+        currentSession.viewDistricts = "all";
+        console.log("✅ 超級管理員模式：已強制設定 viewDistricts = all");
+    }
+    
     showLoading(true);
     try {
         const response = await fetch(API_URL, {
@@ -329,7 +335,7 @@ async function loadVehicles() {
         });
         const result = await response.json();
         
-        console.log("loadVehicles 回應:", result);  // 除錯用
+        console.log("loadVehicles 回應:", result);
         
         if (result.success && result.data) {
             const tbody = document.getElementById('vehicleList');
@@ -340,9 +346,7 @@ async function loadVehicles() {
                 return;
             }
             
-            // 直接渲染，不檢查 isExpired（避免日期解析問題）
             tbody.innerHTML = result.data.map(v => {
-                // 安全處理日期
                 const startDateStr = v.startDate ? v.startDate.split('T')[0] : '-';
                 const expiryDateStr = v.expiryDate ? v.expiryDate.split('T')[0] : '-';
                 
