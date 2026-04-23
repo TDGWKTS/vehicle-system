@@ -492,28 +492,48 @@
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'exportVehicles', session: currentSession })
+            body: JSON.stringify({ action: 'getVehicles', session: currentSession })
         });
         
-        // 獲取回應文字
-        const csvText = await response.text();
+        const result = await response.json();
         
-        // 檢查是否為錯誤訊息
-        if (csvText.startsWith("Export failed") || csvText.startsWith("請先登入") || csvText.startsWith("無資料")) {
-            alert("匯出失敗：" + csvText);
+        if (!result.success || !result.data || result.data.length === 0) {
+            alert("無資料可匯出");
             return;
         }
         
-        // 使用英文檔名（避免編碼問題）
-        const dateStr = new Date().toISOString().split('T')[0];
-        const fileName = `vehicle_list_${dateStr}.csv`;
+        // 手動構建CSV內容（確保中文正確）
+        const headers = ["車牌", "PGVW", "開始日期", "有效日期", "每日上限", "凌晨授權", "區域", "備註", "建立者"];
+        const csvRows = [];
         
-        // 建立下載連結
-        const blob = new Blob(["\uFEFF" + csvText], { type: 'text/csv;charset=utf-8;' });
+        // 添加標題行
+        csvRows.push(headers.join(","));
+        
+        // 添加數據行
+        result.data.forEach(v => {
+            const row = [
+                `"${String(v.plate || "").replace(/"/g, '""')}"`,
+                v.pgvw || "",
+                `"${String(v.startDate || "").replace(/"/g, '""')}"`,
+                `"${String(v.expiryDate || "").replace(/"/g, '""')}"`,
+                v.dailyLimit || 5,
+                v.midnight === 'Y' ? "是" : "否",
+                `"${String(v.district || "").replace(/"/g, '""')}"`,
+                `"${String(v.remark || "").replace(/"/g, '""')}"`,
+                `"${String(v.createdBy || "").replace(/"/g, '""')}"`
+            ];
+            csvRows.push(row.join(","));
+        });
+        
+        // 加入BOM確保中文正確顯示
+        const csvContent = "\uFEFF" + csvRows.join("\n");
+        
+        // 下載檔案
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.href = url;
-        link.download = fileName;
+        link.download = `車輛清單_${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
