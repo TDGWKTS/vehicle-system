@@ -318,51 +318,63 @@ async function loadUserList() {
     }
     
     // ==================== 載入車輛列表 ====================
-    async function loadVehicles() {
-        if (!currentSession) return;
+async function loadVehicles() {
+    if (!currentSession) return;
+    
+    showLoading(true);
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getVehicles', session: currentSession })
+        });
+        const result = await response.json();
         
-        showLoading(true);
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'getVehicles', session: currentSession })
-            });
-            const result = await response.json();
+        console.log("loadVehicles 回應:", result);  // 除錯用
+        
+        if (result.success && result.data) {
+            const tbody = document.getElementById('vehicleList');
             
-            if (result.success) {
-                const tbody = document.getElementById('vehicleList');
+            if (result.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">暫無資料</td></tr>';
+                document.getElementById('recordCount').innerText = "0 筆";
+                return;
+            }
+            
+            // 直接渲染，不檢查 isExpired（避免日期解析問題）
+            tbody.innerHTML = result.data.map(v => {
+                // 安全處理日期
+                const startDateStr = v.startDate ? v.startDate.split('T')[0] : '-';
+                const expiryDateStr = v.expiryDate ? v.expiryDate.split('T')[0] : '-';
                 
-                if (result.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">暫無資料</td></tr>';
-                    document.getElementById('recordCount').innerText = "0 筆";
-                    return;
-                }
-                
-                tbody.innerHTML = result.data.map(v => `
-                    <tr class="${v.isExpired ? 'expired' : ''}">
+                return `
+                    <tr>
                         <td><strong>${escapeHtml(v.plate)}</strong></td>
                         <td>${v.pgvw}</td>
                         <td>${v.dailyLimit || 5}</td>
-                        <td>${v.startDate || '-'}</td>
-                        <td class="${v.isExpired ? 'text-danger fw-bold' : ''}">${v.expiryDate || '-'}</td>
+                        <td>${startDateStr}</td>
+                        <td>${expiryDateStr}</td>
                         <td>${v.midnight === 'Y' ? '✅ 是' : '❌ 否'}</td>
                         <td>${escapeHtml(v.district)}</td>
                         <td>${escapeHtml(v.remark) || '-'}</td>
                         <td>${escapeHtml(v.createdBy) || '-'}</td>
                         <td>${currentRole === 'fehd' ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate}')">刪除</button>` : '🔍 唯讀'}</td>
-                     </tr>
-                `).join('');
-                
-                document.getElementById('recordCount').innerText = `${result.data.length} 筆`;
-            } else {
-                alert("載入失敗：" + result.msg);
-            }
-        } catch (err) {
-            alert("網路錯誤：" + err);
-        } finally {
-            showLoading(false);
+                    </tr>
+                `;
+            }).join('');
+            
+            document.getElementById('recordCount').innerText = `${result.data.length} 筆`;
+            console.log("✅ 成功載入", result.data.length, "筆車輛資料");
+        } else {
+            console.error("載入失敗:", result.msg);
+            document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">載入失敗：' + (result.msg || '未知錯誤') + '</td></tr>';
         }
+    } catch (err) {
+        console.error("網路錯誤:", err);
+        document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
+    } finally {
+        showLoading(false);
     }
+}
     
     // ==================== 單筆新增（只有食環署可用） ====================
     if (document.getElementById('vehicleForm')) {
