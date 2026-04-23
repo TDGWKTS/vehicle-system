@@ -176,26 +176,27 @@
     
     // ==================== 根據角色初始化頁面 ====================
     function initByRole() {
-        currentRole = getUrlParameter('role') || 'fehd';
-        
-        if (currentRole === 'fehd') {
-            // 食環署模式
-            document.getElementById('loginTitle').innerHTML = '👨‍💼 食環署車輛管理系統';
-            document.getElementById('mainTitle').innerHTML = '👨‍💼 食環署車輛管理系統';
-            document.getElementById('loginBtn').innerHTML = '食環署登入';
-            document.getElementById('vehicleFormSection').style.display = 'block';
-            document.getElementById('batchSection').style.display = 'block';
-        } else {
-            // 轉運站模式（只讀，不能編輯）
-            document.getElementById('loginTitle').innerHTML = '⚖️ 轉運站車輛查詢系統';
-            document.getElementById('mainTitle').innerHTML = '⚖️ 轉運站車輛查詢系統';
-            document.getElementById('loginBtn').innerHTML = '轉運站登入';
-            document.getElementById('vehicleFormSection').style.display = 'none';
-            document.getElementById('batchSection').style.display = 'none';
-        }
-        
-        loadUserList();
+    currentRole = getUrlParameter('role') || 'fehd';
+    
+    if (currentRole === 'fehd') {
+        // 食環署模式
+        document.getElementById('loginTitle').innerHTML = '👨‍💼 食環署車輛管理系統';
+        document.getElementById('mainTitle').innerHTML = '👨‍💼 食環署車輛管理系統';
+        document.getElementById('loginBtn').innerHTML = '食環署登入';
+        document.getElementById('vehicleFormSection').style.display = 'block';
+        document.getElementById('batchSection').style.display = 'block';
+    } else {
+        // 轉運站模式（只讀，不能編輯，但可匯出）
+        document.getElementById('loginTitle').innerHTML = '⚖️ 轉運站車輛查詢系統';
+        document.getElementById('mainTitle').innerHTML = '⚖️ 轉運站車輛查詢系統';
+        document.getElementById('loginBtn').innerHTML = '轉運站登入';
+        document.getElementById('vehicleFormSection').style.display = 'none';
+        document.getElementById('batchSection').style.display = 'none';
+        // 匯出按鈕已經在列表標題欄，無需額外處理
     }
+    
+    loadUserList();
+}
     
     // ==================== 顯示/隱藏 Loading ====================
     function showLoading(show) {
