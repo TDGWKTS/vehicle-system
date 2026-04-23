@@ -19,6 +19,14 @@
         .role-fehd { background: #cfe2ff; color: #084298; }
         .role-weighbridge { background: #d1e7dd; color: #0f5132; }
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: none; justify-content: center; align-items: center; color: white; font-size: 20px; }
+        
+        /* 統一按鈕 hover 效果 */
+        .btn-outline-success:hover,
+        .btn-outline-info:hover,
+        .btn-outline-secondary:hover {
+            transform: translateY(-1px);
+            transition: all 0.2s ease;
+        }
     </style>
 </head>
 <body>
@@ -136,29 +144,28 @@
         
         <!-- 車輛列表 -->
         <div class="card">
-            <!-- 在原本的 card-header 區塊中，替換按鈕部分 -->
-<div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <span>🚛 權限車輛清單（自動保留最長有效期限）</span>
-    <div>
-        <button onclick="exportCSV()" class="btn btn-sm btn-outline-success">
-            📄 匯出 CSV
-        </button>
-        <button onclick="exportExcel()" class="btn btn-sm btn-outline-info">
-            📊 匯出 Excel
-        </button>
-        <button onclick="loadVehicles()" class="btn btn-sm btn-outline-secondary">
-            🔄 重新整理
-        </button>
-        <span class="badge bg-light text-dark" id="recordCount">0 筆</span>
-    </div>
-</div>
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span>🚛 權限車輛清單（自動保留最長有效期限）</span>
+                <div class="d-flex gap-2">
+                    <button onclick="exportCSV()" class="btn btn-sm btn-outline-success">
+                        📄 匯出 CSV
+                    </button>
+                    <button onclick="exportExcel()" class="btn btn-sm btn-outline-success">
+                        📊 匯出 Excel
+                    </button>
+                    <button onclick="loadVehicles()" class="btn btn-sm btn-outline-secondary">
+                        🔄 重新整理
+                    </button>
+                    <span class="badge bg-light text-dark" id="recordCount">0 筆</span>
+                </div>
+            </div>
             <div class="card-body table-container">
                 <table class="table table-bordered table-hover table-sm">
                     <thead>
                         <tr style="position: sticky; top: 0; background: white;">
                             <th>車牌</th><th>PGVW</th><th>每日上限</th><th>開始日期</th><th>有效日期</th>
                             <th>凌晨</th><th>區域</th><th>備註</th><th>建立者</th><th>操作</th>
-                          </tr>
+                           </tr>
                     </thead>
                     <tbody id="vehicleList">
                         <tr><td colspan="10" class="text-center text-muted">載入中......</td></tr>
