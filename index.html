@@ -136,15 +136,22 @@
         
         <!-- 車輛列表 -->
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <span>📋 授權車輛清單（自動保留最長有效期）</span>
-                <div>
-                    <button onclick="exportCSV()" class="btn btn-sm btn-outline-success">📥 匯出 CSV</button>
-                    <button onclick="exportExcel()" class="btn btn-sm btn-outline-info">📊 匯出 Excel</button>
-                    <button onclick="loadVehicles()" class="btn btn-sm btn-outline-secondary">🔄 刷新</button>
-                    <span class="badge bg-light text-dark" id="recordCount">0 筆</span>
-                </div>
-            </div>
+            <!-- 在原本的 card-header 區塊中，替換按鈕部分 -->
+<div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <span>🚛 權限車輛清單（自動保留最長有效期限）</span>
+    <div>
+        <button onclick="exportCSV()" class="btn btn-sm btn-outline-success">
+            📄 匯出 CSV
+        </button>
+        <button onclick="exportExcel()" class="btn btn-sm btn-outline-info">
+            📊 匯出 Excel
+        </button>
+        <button onclick="loadVehicles()" class="btn btn-sm btn-outline-secondary">
+            🔄 重新整理
+        </button>
+        <span class="badge bg-light text-dark" id="recordCount">0 筆</span>
+    </div>
+</div>
             <div class="card-body table-container">
                 <table class="table table-bordered table-hover table-sm">
                     <thead>
