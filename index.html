@@ -482,7 +482,7 @@
     }
     
     // 修正 CSV 匯出函數
-    async function exportCSV() {
+   async function exportCSV() {
     if (!currentSession) {
         alert("請先登入");
         return;
@@ -502,20 +502,31 @@
             return;
         }
         
-        // 手動構建CSV內容（確保中文正確）
+        // 手動構建CSV內容
         const headers = ["車牌", "PGVW", "開始日期", "有效日期", "每日上限", "凌晨授權", "區域", "備註", "建立者"];
         const csvRows = [];
         
         // 添加標題行
         csvRows.push(headers.join(","));
         
-        // 添加數據行
-        result.data.forEach(v => {
+        // 添加數據行 - 逐行處理
+        for (const v of result.data) {
+            // 只取日期部分，不要時間
+            let startDate = "";
+            if (v.startDate) {
+                startDate = v.startDate.split('T')[0]; // 去掉時間部分
+            }
+            
+            let expiryDate = "";
+            if (v.expiryDate) {
+                expiryDate = v.expiryDate.split('T')[0]; // 去掉時間部分
+            }
+            
             const row = [
                 `"${String(v.plate || "").replace(/"/g, '""')}"`,
                 v.pgvw || "",
-                `"${String(v.startDate || "").replace(/"/g, '""')}"`,
-                `"${String(v.expiryDate || "").replace(/"/g, '""')}"`,
+                `"${startDate}"`,
+                `"${expiryDate}"`,
                 v.dailyLimit || 5,
                 v.midnight === 'Y' ? "是" : "否",
                 `"${String(v.district || "").replace(/"/g, '""')}"`,
@@ -523,12 +534,12 @@
                 `"${String(v.createdBy || "").replace(/"/g, '""')}"`
             ];
             csvRows.push(row.join(","));
-        });
+        }
         
-        // 加入BOM確保中文正確顯示
+        // 用換行符連接每一行
         const csvContent = "\uFEFF" + csvRows.join("\n");
         
-        // 下載檔案
+        // 創建下載
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
@@ -549,36 +560,46 @@
 }
     
     async function exportExcel() {
-        if (!currentSession) return;
-        showLoading(true);
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'getVehicles', session: currentSession })
+    if (!currentSession) return;
+    showLoading(true);
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getVehicles', session: currentSession })
+        });
+        const result = await response.json();
+        if (result.success && result.data.length > 0) {
+            const wsData = [["車牌", "PGVW", "開始日期", "有效日期", "每日上限", "凌晨授權", "區域", "備註", "建立者"]];
+            result.data.forEach(v => {
+                // 只取日期部分，不要時間
+                let startDate = v.startDate ? v.startDate.split('T')[0] : "";
+                let expiryDate = v.expiryDate ? v.expiryDate.split('T')[0] : "";
+                
+                wsData.push([
+                    v.plate, 
+                    v.pgvw, 
+                    startDate, 
+                    expiryDate,
+                    v.dailyLimit || 5, 
+                    v.midnight === 'Y' ? '是' : '否',
+                    v.district, 
+                    v.remark || "", 
+                    v.createdBy || ""
+                ]);
             });
-            const result = await response.json();
-            if (result.success && result.data.length > 0) {
-                const wsData = [["車牌", "PGVW", "開始日期", "有效日期", "每日上限", "凌晨授權", "區域", "備註", "建立者"]];
-                result.data.forEach(v => {
-                    wsData.push([
-                        v.plate, v.pgvw, v.startDate || "", v.expiryDate || "",
-                        v.dailyLimit || 5, v.midnight === 'Y' ? '是' : '否',
-                        v.district, v.remark || "", v.createdBy || ""
-                    ]);
-                });
-                const ws = XLSX.utils.aoa_to_sheet(wsData);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "車輛清單");
-                XLSX.writeFile(wb, `車輛清單_${new Date().toISOString().split('T')[0]}.xlsx`);
-            } else {
-                alert("無資料可匯出");
-            }
-        } catch (err) {
-            alert("匯出失敗：" + err);
-        } finally {
-            showLoading(false);
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "車輛清單");
+            XLSX.writeFile(wb, `車輛清單_${new Date().toISOString().split('T')[0]}.xlsx`);
+        } else {
+            alert("無資料可匯出");
         }
+    } catch (err) {
+        alert("匯出失敗：" + err);
+    } finally {
+        showLoading(false);
     }
+}
     
     function escapeHtml(str) {
         if (!str) return "";
