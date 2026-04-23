@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
@@ -144,14 +144,22 @@
         
         <!-- 車輛列表 -->
         <div class="card">
-          
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span>📋 授權車輛清單（自動保留最長有效期）</span>
+                <div>
+                    <button onclick="exportCSV()" class="btn btn-sm btn-outline-success">📥 匯出 CSV</button>
+                    <button onclick="exportExcel()" class="btn btn-sm btn-outline-info">📊 匯出 Excel</button>
+                    <button onclick="loadVehicles()" class="btn btn-sm btn-outline-secondary">🔄 刷新</button>
+                    <span class="badge bg-light text-dark" id="recordCount">0 筆</span>
+                </div>
+            </div>
             <div class="card-body table-container">
                 <table class="table table-bordered table-hover table-sm">
                     <thead>
                         <tr style="position: sticky; top: 0; background: white;">
                             <th>車牌</th><th>PGVW</th><th>每日上限</th><th>開始日期</th><th>有效日期</th>
                             <th>凌晨</th><th>區域</th><th>備註</th><th>建立者</th><th>操作</th>
-                         </tr>
+                          </tr>
                     </thead>
                     <tbody id="vehicleList">
                         <tr><td colspan="10" class="text-center text-muted">載入中......</td></tr>
@@ -176,27 +184,26 @@
     
     // ==================== 根據角色初始化頁面 ====================
     function initByRole() {
-    currentRole = getUrlParameter('role') || 'fehd';
-    
-    if (currentRole === 'fehd') {
-        // 食環署模式
-        document.getElementById('loginTitle').innerHTML = '👨‍💼 食環署車輛管理系統';
-        document.getElementById('mainTitle').innerHTML = '👨‍💼 食環署車輛管理系統';
-        document.getElementById('loginBtn').innerHTML = '食環署登入';
-        document.getElementById('vehicleFormSection').style.display = 'block';
-        document.getElementById('batchSection').style.display = 'block';
-    } else {
-        // 轉運站模式（只讀，不能編輯，但可匯出）
-        document.getElementById('loginTitle').innerHTML = '⚖️ 轉運站車輛查詢系統';
-        document.getElementById('mainTitle').innerHTML = '⚖️ 轉運站車輛查詢系統';
-        document.getElementById('loginBtn').innerHTML = '轉運站登入';
-        document.getElementById('vehicleFormSection').style.display = 'none';
-        document.getElementById('batchSection').style.display = 'none';
-        // 匯出按鈕已經在列表標題欄，無需額外處理
+        currentRole = getUrlParameter('role') || 'fehd';
+        
+        if (currentRole === 'fehd') {
+            // 食環署模式
+            document.getElementById('loginTitle').innerHTML = '👨‍💼 食環署車輛管理系統';
+            document.getElementById('mainTitle').innerHTML = '👨‍💼 食環署車輛管理系統';
+            document.getElementById('loginBtn').innerHTML = '食環署登入';
+            document.getElementById('vehicleFormSection').style.display = 'block';
+            document.getElementById('batchSection').style.display = 'block';
+        } else {
+            // 轉運站模式（只讀，不能編輯，但可匯出）
+            document.getElementById('loginTitle').innerHTML = '⚖️ 轉運站車輛查詢系統';
+            document.getElementById('mainTitle').innerHTML = '⚖️ 轉運站車輛查詢系統';
+            document.getElementById('loginBtn').innerHTML = '轉運站登入';
+            document.getElementById('vehicleFormSection').style.display = 'none';
+            document.getElementById('batchSection').style.display = 'none';
+        }
+        
+        loadUserList();
     }
-    
-    loadUserList();
-}
     
     // ==================== 顯示/隱藏 Loading ====================
     function showLoading(show) {
@@ -204,46 +211,41 @@
         loader.style.display = show ? 'flex' : 'none';
     }
     
-    // ==================== 動態載入用戶列表（根據角色過濾） ====================
-async function loadUserList() {
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'getUserList' })
-        });
-        const result = await response.json();
-        
-        if (result.success && result.users) {
-            const select = document.getElementById('userId');
-            select.innerHTML = '<option value="">-- 請選擇用戶 --</option>';
+    // ==================== 動態載入用戶列表 ====================
+    async function loadUserList() {
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'getUserList' })
+            });
+            const result = await response.json();
             
-            // 根據角色過濾用戶（超級管理員同時出現在兩個模式）
-            const filteredUsers = result.users.filter(u => {
-                if (currentRole === 'fehd') {
-                    // 食環署模式：區域主管 或 超級管理員
-                    return u.role === '區域主管' || u.role === '超級管理員';
-                } else {
-                    // 轉運站模式：轉運站職員 或 超級管理員
-                    return u.role === '轉運站職員' || u.role === '超級管理員';
+            if (result.success && result.users) {
+                const select = document.getElementById('userId');
+                select.innerHTML = '<option value="">-- 請選擇用戶 --</option>';
+                
+                const filteredUsers = result.users.filter(u => {
+                    if (currentRole === 'fehd') {
+                        return u.role === '區域主管' || u.role === '超級管理員';
+                    } else {
+                        return u.role === '轉運站職員' || u.role === '超級管理員';
+                    }
+                });
+                
+                filteredUsers.forEach(u => {
+                    select.innerHTML += `<option value="${u.id}">${u.id}</option>`;
+                });
+                
+                if (filteredUsers.length === 0) {
+                    select.innerHTML = '<option value="">-- 暫無用戶，請聯絡管理員 --</option>';
                 }
-            });
-            
-            filteredUsers.forEach(u => {
-                select.innerHTML += `<option value="${u.id}">${u.id}</option>`;
-            });
-            
-            if (filteredUsers.length === 0) {
-                select.innerHTML = '<option value="">-- 暫無用戶，請聯絡管理員 --</option>';
+            } else {
+                console.error("載入用戶列表失敗", result.msg);
             }
-        } else {
-            console.error("載入用戶列表失敗", result.msg);
-            document.getElementById('userId').innerHTML = '<option value="">-- 載入失敗，請刷新 --</option>';
+        } catch (err) {
+            console.error("網路錯誤", err);
         }
-    } catch (err) {
-        console.error("網路錯誤", err);
-        document.getElementById('userId').innerHTML = '<option value="">-- 網路錯誤 --</option>';
     }
-}
     
     // ==================== 登入 ====================
     async function doLogin() {
@@ -272,16 +274,13 @@ async function loadUserList() {
                 document.getElementById('loginPage').style.display = 'none';
                 document.getElementById('mainPage').style.display = 'block';
                 
-                // 顯示用戶資訊
                 let roleClass = currentRole === 'fehd' ? 'role-fehd' : 'role-weighbridge';
                 let roleName = currentRole === 'fehd' ? '食環署' : '轉運站';
                 document.getElementById('userInfo').innerHTML = `${result.session.userId} <span class="role-tag ${roleClass}">${roleName}</span>`;
                 
-                // 顯示可查看區域
                 const viewText = result.session.viewDistricts === "all" ? "所有區域" : result.session.viewDistricts.join("、");
                 document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<strong>${viewText}</strong>`;
                 
-                // 設定區域下拉選單（食環署需要）
                 if (currentRole === 'fehd') {
                     if (result.session.viewDistricts === "all") {
                         availableDistricts = ["屯門", "西九龍", "沙田", "葵青", "觀塘", "元朗"];
@@ -316,69 +315,70 @@ async function loadUserList() {
     }
     
     // ==================== 載入車輛列表 ====================
-async function loadVehicles() {
-    if (!currentSession) return;
-    
-    // 強制超級管理員可看所有區域
-    if (currentSession.userId === "WKTS" || currentSession.role === "超級管理員") {
-        currentSession.viewDistricts = "all";
-        console.log("✅ 超級管理員模式：已強制設定 viewDistricts = all");
-    }
-    
-    showLoading(true);
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'getVehicles', session: currentSession })
-        });
-        const result = await response.json();
+    async function loadVehicles() {
+        if (!currentSession) return;
         
-        console.log("loadVehicles 回應:", result);
-        
-        if (result.success && result.data) {
-            const tbody = document.getElementById('vehicleList');
-            
-            if (result.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">暫無資料</td></tr>';
-                document.getElementById('recordCount').innerText = "0 筆";
-                return;
-            }
-            
-            tbody.innerHTML = result.data.map(v => {
-                const startDateStr = v.startDate ? v.startDate.split('T')[0] : '-';
-                const expiryDateStr = v.expiryDate ? v.expiryDate.split('T')[0] : '-';
-                
-                return `
-                    <tr>
-                        <td><strong>${escapeHtml(v.plate)}</strong></td>
-                        <td>${v.pgvw}</td>
-                        <td>${v.dailyLimit || 5}</td>
-                        <td>${startDateStr}</td>
-                        <td>${expiryDateStr}</td>
-                        <td>${v.midnight === 'Y' ? '✅ 是' : '❌ 否'}</td>
-                        <td>${escapeHtml(v.district)}</td>
-                        <td>${escapeHtml(v.remark) || '-'}</td>
-                        <td>${escapeHtml(v.createdBy) || '-'}</td>
-                        <td>${currentRole === 'fehd' ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate}')">刪除</button>` : '🔍 唯讀'}</td>
-                    </tr>
-                `;
-            }).join('');
-            
-            document.getElementById('recordCount').innerText = `${result.data.length} 筆`;
-            console.log("✅ 成功載入", result.data.length, "筆車輛資料");
-        } else {
-            console.error("載入失敗:", result.msg);
-            document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">載入失敗：' + (result.msg || '未知錯誤') + '</td></tr>';
+        // 強制超級管理員可看所有區域
+        if (currentSession.userId === "WKTS" || currentSession.role === "超級管理員") {
+            currentSession.viewDistricts = "all";
+            console.log("✅ 超級管理員模式：已強制設定 viewDistricts = all");
         }
-    } catch (err) {
-        console.error("網路錯誤:", err);
-        document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
-    } finally {
-        showLoading(false);
+        
+        showLoading(true);
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'getVehicles', session: currentSession })
+            });
+            const result = await response.json();
+            
+            console.log("loadVehicles 回應:", result);
+            
+            if (result.success && result.data) {
+                const tbody = document.getElementById('vehicleList');
+                const recordCountSpan = document.getElementById('recordCount');
+                
+                if (result.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">暫無資料</td></tr>';
+                    if (recordCountSpan) recordCountSpan.innerText = "0 筆";
+                    return;
+                }
+                
+                tbody.innerHTML = result.data.map(v => {
+                    const startDateStr = v.startDate ? v.startDate.split('T')[0] : '-';
+                    const expiryDateStr = v.expiryDate ? v.expiryDate.split('T')[0] : '-';
+                    
+                    return `
+                        <tr>
+                            <td><strong>${escapeHtml(v.plate)}</strong></td>
+                            <td>${v.pgvw}</td>
+                            <td>${v.dailyLimit || 5}</td>
+                            <td>${startDateStr}</td>
+                            <td>${expiryDateStr}</td>
+                            <td>${v.midnight === 'Y' ? '✅ 是' : '❌ 否'}</td>
+                            <td>${escapeHtml(v.district)}</td>
+                            <td>${escapeHtml(v.remark) || '-'}</td>
+                            <td>${escapeHtml(v.createdBy) || '-'}</td>
+                            <td>${currentRole === 'fehd' ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate}')">刪除</button>` : '🔍 唯讀'}</td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                if (recordCountSpan) recordCountSpan.innerText = `${result.data.length} 筆`;
+                console.log("✅ 成功載入", result.data.length, "筆車輛資料");
+            } else {
+                console.error("載入失敗:", result.msg);
+                document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">載入失敗：' + (result.msg || '未知錯誤') + '</td></tr>';
+            }
+        } catch (err) {
+            console.error("網路錯誤:", err);
+            document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
+        } finally {
+            showLoading(false);
+        }
     }
-}
     
-    // ==================== 單筆新增（只有食環署可用） ====================
+    // ==================== 單筆新增 ====================
     if (document.getElementById('vehicleForm')) {
         document.getElementById('vehicleForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -432,7 +432,7 @@ async function loadVehicles() {
         });
     }
     
-    // ==================== 批量上傳（只有食環署可用） ====================
+    // ==================== 批量上傳 ====================
     async function batchUpload() {
         if (!currentSession || currentRole !== 'fehd') {
             alert("您沒有權限上傳車輛");
