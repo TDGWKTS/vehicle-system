@@ -28,24 +28,17 @@
             transition: all 0.2s ease;
         }
         
-        /* 排序按鈕樣式 */
-        .sort-btn {
+        /* 排序表頭樣式 - 保持原有樣式，加入游標指標 */
+        .sortable-header {
             cursor: pointer;
             user-select: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
+            position: relative;
         }
-        .sort-btn:hover {
-            color: #198754;
+        .sortable-header:hover {
+            background-color: #f8f9fa;
         }
-        .sort-icon {
-            font-size: 11px;
-            opacity: 0.5;
-        }
-        .sort-icon.active {
-            opacity: 1;
-            color: #198754;
+        .sortable-header:active {
+            background-color: #e9ecef;
         }
         
         /* 搜尋框樣式 */
@@ -205,15 +198,15 @@
                 <table class="table table-bordered table-hover table-sm" id="vehicleTable">
                     <thead>
                         <tr style="position: sticky; top: 0; background: white;">
-                            <th class="sort-btn" onclick="sortTable(0)">車牌 <span class="sort-icon" id="sort-icon-0">↕️</span></th>
-                            <th class="sort-btn" onclick="sortTable(1)">PGVW <span class="sort-icon" id="sort-icon-1">↕️</span></th>
-                            <th class="sort-btn" onclick="sortTable(2)">每日上限 <span class="sort-icon" id="sort-icon-2">↕️</span></th>
-                            <th class="sort-btn" onclick="sortTable(3)">開始日期 <span class="sort-icon" id="sort-icon-3">↕️</span></th>
-                            <th class="sort-btn" onclick="sortTable(4)">有效日期 <span class="sort-icon" id="sort-icon-4">↕️</span></th>
-                            <th class="sort-btn" onclick="sortTable(5)">凌晨 <span class="sort-icon" id="sort-icon-5">↕️</span></th>
-                            <th class="sort-btn" onclick="sortTable(6)">區域 <span class="sort-icon" id="sort-icon-6">↕️</span></th>
-                            <th class="sort-btn" onclick="sortTable(7)">備註 <span class="sort-icon" id="sort-icon-7">↕️</span></th>
-                            <th class="sort-btn" onclick="sortTable(8)">建立者 <span class="sort-icon" id="sort-icon-8">↕️</span></th>
+                            <th class="sortable-header" onclick="sortTable(0)">車牌</th>
+                            <th class="sortable-header" onclick="sortTable(1)">PGVW</th>
+                            <th class="sortable-header" onclick="sortTable(2)">每日上限</th>
+                            <th class="sortable-header" onclick="sortTable(3)">開始日期</th>
+                            <th class="sortable-header" onclick="sortTable(4)">有效日期</th>
+                            <th class="sortable-header" onclick="sortTable(5)">凌晨</th>
+                            <th class="sortable-header" onclick="sortTable(6)">區域</th>
+                            <th class="sortable-header" onclick="sortTable(7)">備註</th>
+                            <th class="sortable-header" onclick="sortTable(8)">建立者</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -396,21 +389,7 @@
             sortDirection = 'asc';
         }
         
-        // 更新排序圖示
-        for (let i = 0; i <= 8; i++) {
-            const icon = document.getElementById(`sort-icon-${i}`);
-            if (icon) {
-                if (i === sortColumn) {
-                    icon.innerHTML = sortDirection === 'asc' ? '▲' : '▼';
-                    icon.classList.add('active');
-                } else {
-                    icon.innerHTML = '↕️';
-                    icon.classList.remove('active');
-                }
-            }
-        }
-        
-        // 執行排序
+        // 執行排序和顯示
         const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
         displayVehicles(sortColumn, sortDirection, searchTerm);
     }
@@ -436,7 +415,7 @@
         }
         
         // 排序
-        if (column !== -1) {
+        if (column !== -1 && filteredData.length > 0) {
             filteredData.sort((a, b) => {
                 let valA, valB;
                 
@@ -455,9 +434,18 @@
                 
                 // 數字比較
                 if (column === 1 || column === 2) {
-                    valA = Number(valA);
-                    valB = Number(valB);
+                    valA = Number(valA) || 0;
+                    valB = Number(valB) || 0;
                     return direction === 'asc' ? valA - valB : valB - valA;
+                }
+                
+                // 日期比較
+                if (column === 3 || column === 4) {
+                    if (!valA) valA = '';
+                    if (!valB) valB = '';
+                    if (valA < valB) return direction === 'asc' ? -1 : 1;
+                    if (valA > valB) return direction === 'asc' ? 1 : -1;
+                    return 0;
                 }
                 
                 // 字串比較
@@ -494,7 +482,7 @@
                     <td>${escapeHtml(v.district)}</td>
                     <td>${escapeHtml(v.remark) || '-'}</td>
                     <td>${escapeHtml(v.createdBy) || '-'}</td>
-                    <td>${currentRole === 'fehd' ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate}')">刪除</button>` : '🔍 唯讀'}</td>
+                    <td>${currentRole === 'fehd' ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate.replace(/'/g, "\\'")}')">刪除</button>` : '🔍 唯讀'}</td>
                 </tr>
             `;
         }).join('');
