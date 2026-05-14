@@ -13,14 +13,12 @@
         .card-header { background: #198754; color: white; border-radius: 16px 16px 0 0; font-weight: bold; }
         .login-card { max-width: 400px; margin: 100px auto; }
         .table-container { max-height: 500px; overflow-y: auto; }
-        .expired { color: #dc3545; background-color: #fff3f3; }
         .user-badge { background: #e9ecef; padding: 5px 12px; border-radius: 20px; font-size: 12px; }
         .role-tag { font-size: 11px; padding: 2px 8px; border-radius: 12px; }
         .role-fehd { background: #cfe2ff; color: #084298; }
         .role-weighbridge { background: #d1e7dd; color: #0f5132; }
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: none; justify-content: center; align-items: center; color: white; font-size: 20px; }
         
-        /* 統一按鈕 hover 效果 */
         .btn-outline-success:hover,
         .btn-outline-info:hover,
         .btn-outline-secondary:hover {
@@ -28,7 +26,6 @@
             transition: all 0.2s ease;
         }
         
-        /* 排序表頭樣式 - 保持原有樣式，加入游標指標 */
         .sortable-header {
             cursor: pointer;
             user-select: none;
@@ -37,11 +34,7 @@
         .sortable-header:hover {
             background-color: #f8f9fa;
         }
-        .sortable-header:active {
-            background-color: #e9ecef;
-        }
         
-        /* 搜尋框樣式 */
         .search-input {
             width: 250px;
             border-radius: 20px;
@@ -54,7 +47,6 @@
             box-shadow: 0 0 5px rgba(25, 135, 84, 0.3);
         }
         
-        /* 表格標題固定 */
         .table thead th {
             position: sticky;
             top: 0;
@@ -112,7 +104,7 @@
             <div class="card-body">
                 <form id="vehicleForm">
                     <div class="row g-3">
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label">車牌號碼 *</label>
                             <input type="text" id="plate" class="form-control" required placeholder="AB1234" oninput="this.value = this.value.toUpperCase()">
                         </div>
@@ -121,14 +113,14 @@
                             <input type="number" id="pgvw" class="form-control" step="0.1" required placeholder="5.5">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">每日上限</label>
-                            <input type="number" id="dailyLimit" class="form-control" value="5" placeholder="5">
+                            <label class="form-label">每日上限 *</label>
+                            <input type="number" id="dailyLimit" class="form-control" value="5" required placeholder="5">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">開始日期</label>
                             <input type="date" id="startDate" class="form-control">
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label">有效日期 *</label>
                             <input type="date" id="expiryDate" class="form-control" required>
                         </div>
@@ -140,14 +132,10 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">所屬區域</label>
+                            <label class="form-label">所屬區域 *</label>
                             <select id="district" class="form-select" required>
                                 <option value="">請選擇</option>
                             </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">備註</label>
-                            <input type="text" id="remark" class="form-control" placeholder="可選">
                         </div>
                         <div class="col-12">
                             <button type="submit" class="btn btn-primary w-100">✅ 儲存車輛資料</button>
@@ -165,7 +153,7 @@
                     <div class="col-md-6">
                         <label class="form-label">批量上傳 Excel</label>
                         <input type="file" id="excelFile" class="form-control" accept=".xlsx, .xls, .csv">
-                        <div class="form-text small">Excel 欄位：車牌、PGVW、開始日期、有效日期、每日上限、凌晨時段(Y/N)、區域、備註</div>
+                        <div class="form-text small">Excel 欄位：車牌、PGVW、開始日期、有效日期、每日上限、凌晨時段(Y/N)、區域</div>
                         <button onclick="batchUpload()" class="btn btn-outline-primary mt-2">⬆️ 上傳並自動合併</button>
                     </div>
                 </div>
@@ -181,7 +169,7 @@
             <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <span>🚛 權限車輛清單（自動保留最長有效期限）</span>
                 <div class="d-flex gap-2 align-items-center">
-                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 搜尋車牌、區域、備註..." onkeyup="filterTable()">
+                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 搜尋車牌、區域..." onkeyup="filterTable()">
                     <button onclick="exportCSV()" class="btn btn-sm btn-outline-info">
                         📄 匯出 CSV
                     </button>
@@ -205,13 +193,12 @@
                             <th class="sortable-header" onclick="sortTable(4)">有效日期</th>
                             <th class="sortable-header" onclick="sortTable(5)">凌晨</th>
                             <th class="sortable-header" onclick="sortTable(6)">區域</th>
-                            <th class="sortable-header" onclick="sortTable(7)">備註</th>
-                            <th class="sortable-header" onclick="sortTable(8)">建立者</th>
+                            <th class="sortable-header" onclick="sortTable(7)">建立者</th>
                             <th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="vehicleList">
-                        <tr><td colspan="10" class="text-center text-muted">載入中......</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted">載入中......</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -224,9 +211,9 @@
     let currentSession = null;
     let availableDistricts = [];
     let currentRole = "fehd";
-    let vehiclesData = []; // 儲存原始車輛資料
+    let vehiclesData = [];
     let sortColumn = -1;
-    let sortDirection = 'asc'; // 'asc' 或 'desc'
+    let sortDirection = 'asc';
     
     function getUrlParameter(name) {
         const urlParams = new URLSearchParams(window.location.search);
@@ -250,7 +237,6 @@
             document.getElementById('batchSection').style.display = 'none';
         }
         
-        // 自動填入今天的日期作為開始日期
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -365,60 +351,47 @@
             });
             const result = await response.json();
             if (result.success && result.data) {
-                // 儲存原始資料
                 vehiclesData = result.data;
-                // 重新整理顯示
                 filterTable();
             }
         } catch (err) {
             console.error("網路錯誤:", err);
-            document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
+            document.getElementById('vehicleList').innerHTML = '<tr><td colspan="9" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
         } finally {
             showLoading(false);
         }
     }
     
-    // 排序函數
     function sortTable(columnIndex) {
         if (sortColumn === columnIndex) {
-            // 同一欄，切換排序方向
             sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
         } else {
-            // 新欄位，設為升序
             sortColumn = columnIndex;
             sortDirection = 'asc';
         }
-        
-        // 執行排序和顯示
         const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
         displayVehicles(sortColumn, sortDirection, searchTerm);
     }
     
-    // 搜尋過濾函數
     function filterTable() {
         const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
         displayVehicles(sortColumn, sortDirection, searchTerm);
     }
     
-    // 顯示車輛（套用排序和搜尋）
     function displayVehicles(column, direction, searchTerm) {
         let filteredData = [...vehiclesData];
         
-        // 搜尋過濾
         if (searchTerm) {
             filteredData = filteredData.filter(v => {
                 return (v.plate && v.plate.toLowerCase().includes(searchTerm)) ||
                        (v.district && v.district.toLowerCase().includes(searchTerm)) ||
-                       (v.remark && v.remark.toLowerCase().includes(searchTerm)) ||
                        (v.createdBy && v.createdBy.toLowerCase().includes(searchTerm));
             });
         }
         
-        // 排序
         if (column !== -1 && filteredData.length > 0) {
             filteredData.sort((a, b) => {
                 let valA, valB;
-                
                 switch(column) {
                     case 0: valA = a.plate || ''; valB = b.plate || ''; break;
                     case 1: valA = a.pgvw || 0; valB = b.pgvw || 0; break;
@@ -427,19 +400,16 @@
                     case 4: valA = a.expiryDate || ''; valB = b.expiryDate || ''; break;
                     case 5: valA = a.midnight || 'N'; valB = b.midnight || 'N'; break;
                     case 6: valA = a.district || ''; valB = b.district || ''; break;
-                    case 7: valA = a.remark || ''; valB = b.remark || ''; break;
-                    case 8: valA = a.createdBy || ''; valB = b.createdBy || ''; break;
+                    case 7: valA = a.createdBy || ''; valB = b.createdBy || ''; break;
                     default: valA = ''; valB = '';
                 }
                 
-                // 數字比較
                 if (column === 1 || column === 2) {
                     valA = Number(valA) || 0;
                     valB = Number(valB) || 0;
                     return direction === 'asc' ? valA - valB : valB - valA;
                 }
                 
-                // 日期比較
                 if (column === 3 || column === 4) {
                     if (!valA) valA = '';
                     if (!valB) valB = '';
@@ -448,7 +418,6 @@
                     return 0;
                 }
                 
-                // 字串比較
                 if (typeof valA === 'string') valA = valA.toLowerCase();
                 if (typeof valB === 'string') valB = valB.toLowerCase();
                 
@@ -458,12 +427,11 @@
             });
         }
         
-        // 渲染表格
         const tbody = document.getElementById('vehicleList');
         const recordCountSpan = document.getElementById('recordCount');
         
         if (filteredData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">暫無資料</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">暫無資料</td></tr>';
             if (recordCountSpan) recordCountSpan.innerText = "0 筆";
             return;
         }
@@ -480,7 +448,6 @@
                     <td>${expiryDateStr}</td>
                     <td>${v.midnight === 'Y' ? '✅ 是' : '❌ 否'}</td>
                     <td>${escapeHtml(v.district)}</td>
-                    <td>${escapeHtml(v.remark) || '-'}</td>
                     <td>${escapeHtml(v.createdBy) || '-'}</td>
                     <td>${currentRole === 'fehd' ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate.replace(/'/g, "\\'")}')">刪除</button>` : '🔍 唯讀'}</td>
                 </tr>
@@ -503,8 +470,7 @@
             startDate: document.getElementById('startDate').value,
             expiryDate: document.getElementById('expiryDate').value,
             district: document.getElementById('district').value,
-            midnight: document.getElementById('midnight').value,
-            remark: document.getElementById('remark').value
+            midnight: document.getElementById('midnight').value
         };
         if (!data.plate || isNaN(data.pgvw) || data.pgvw <= 0 || !data.expiryDate || !data.district) {
             alert("請填寫完整資料");
@@ -521,14 +487,12 @@
                 alert(result.msg);
                 document.getElementById('plate').value = "";
                 document.getElementById('pgvw').value = "";
-                // 保留開始日期為今天
                 const today = new Date();
                 const yyyy = today.getFullYear();
                 const mm = String(today.getMonth() + 1).padStart(2, '0');
                 const dd = String(today.getDate()).padStart(2, '0');
                 document.getElementById('startDate').value = `${yyyy}-${mm}-${dd}`;
                 document.getElementById('expiryDate').value = "";
-                document.getElementById('remark').value = "";
                 loadVehicles();
             } else {
                 alert("操作失敗：" + result.msg);
@@ -574,8 +538,7 @@
                         expiryDate: formatExcelDate(row[3]),
                         dailyLimit: parseInt(row[4]) || 5,
                         midnight: String(row[5] || 'N').toUpperCase() === 'Y' ? 'Y' : 'N',
-                        district: district,
-                        remark: row[7] ? String(row[7]) : ""
+                        district: district
                     });
                 }
                 const validData = dataList.filter(d => d.plate && d.pgvw > 0 && d.expiryDate && d.district);
@@ -654,29 +617,23 @@
             alert("請先登入");
             return;
         }
-        
         showLoading(true);
         try {
             const response = await fetch(API_URL, {
                 method: 'POST',
                 body: JSON.stringify({ action: 'getVehicles', session: currentSession })
             });
-            
             const result = await response.json();
-            
             if (!result.success || !result.data || result.data.length === 0) {
                 alert("無資料可匯出");
                 return;
             }
-            
-            const headers = ["車牌", "PGVW", "開始日期", "有效日期", "每日上限", "凌晨授權", "區域", "備註", "建立者"];
+            const headers = ["車牌", "PGVW", "開始日期", "有效日期", "每日上限", "凌晨授權", "區域", "建立者"];
             const csvRows = [];
             csvRows.push(headers.join(","));
-            
             for (const v of result.data) {
                 let startDate = v.startDate ? v.startDate.split('T')[0] : "";
                 let expiryDate = v.expiryDate ? v.expiryDate.split('T')[0] : "";
-                
                 const row = [
                     `"${String(v.plate || "").replace(/"/g, '""')}"`,
                     v.pgvw || "",
@@ -685,12 +642,10 @@
                     v.dailyLimit || 5,
                     v.midnight === 'Y' ? "是" : "否",
                     `"${String(v.district || "").replace(/"/g, '""')}"`,
-                    `"${String(v.remark || "").replace(/"/g, '""')}"`,
                     `"${String(v.createdBy || "").replace(/"/g, '""')}"`
                 ];
                 csvRows.push(row.join(","));
             }
-            
             const csvContent = "\uFEFF" + csvRows.join("\n");
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
@@ -701,8 +656,6 @@
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            
-            console.log("✅ CSV 匯出成功");
         } catch (err) {
             console.error("匯出錯誤:", err);
             alert("匯出失敗：" + err.message);
@@ -721,21 +674,14 @@
             });
             const result = await response.json();
             if (result.success && result.data.length > 0) {
-                const wsData = [["車牌", "PGVW", "開始日期", "有效日期", "每日上限", "凌晨授權", "區域", "備註", "建立者"]];
+                const wsData = [["車牌", "PGVW", "開始日期", "有效日期", "每日上限", "凌晨授權", "區域", "建立者"]];
                 result.data.forEach(v => {
                     let startDate = v.startDate ? v.startDate.split('T')[0] : "";
                     let expiryDate = v.expiryDate ? v.expiryDate.split('T')[0] : "";
-                    
                     wsData.push([
-                        v.plate, 
-                        v.pgvw, 
-                        startDate, 
-                        expiryDate,
-                        v.dailyLimit || 5, 
-                        v.midnight === 'Y' ? '是' : '否',
-                        v.district, 
-                        v.remark || "", 
-                        v.createdBy || ""
+                        v.plate, v.pgvw, startDate, expiryDate,
+                        v.dailyLimit || 5, v.midnight === 'Y' ? '是' : '否',
+                        v.district, v.createdBy || ""
                     ]);
                 });
                 const ws = XLSX.utils.aoa_to_sheet(wsData);
