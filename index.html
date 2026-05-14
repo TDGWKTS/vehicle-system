@@ -109,7 +109,7 @@
             <div class="card-body">
                 <form id="vehicleForm">
                     <div class="row g-3">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label">車牌號碼 *</label>
                             <input type="text" id="plate" class="form-control" required placeholder="AB1234" oninput="this.value = this.value.toUpperCase()">
                         </div>
@@ -121,9 +121,13 @@
                             <label class="form-label">開始日期</label>
                             <input type="date" id="startDate" class="form-control">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label">有效日期 *</label>
                             <input type="date" id="expiryDate" class="form-control" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">車輛每日上限 *</label>
+                            <input type="number" id="vehicleDailyLimit" class="form-control" value="5" required placeholder="5">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">凌晨授權</label>
@@ -138,13 +142,10 @@
                                 <option value="">請選擇</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label">區域每日上限</label>
-                            <div class="input-group">
-                                <input type="number" id="districtDailyLimit" class="form-control" value="50" min="0" step="1">
-                                <button type="button" class="btn btn-outline-primary" onclick="updateDistrictQuota()">儲存</button>
-                            </div>
-                            <div class="form-text small">設定該區域所有車輛每日總次數上限</div>
+                            <input type="number" id="districtDailyLimit" class="form-control" value="50" min="0" step="1" readonly style="background-color: #e9ecef;">
+                            <div class="form-text small">自動載入，如需修改請聯絡管理員</div>
                         </div>
                         <div class="col-12">
                             <button type="submit" class="btn btn-primary w-100">✅ 儲存車輛資料</button>
@@ -162,7 +163,7 @@
                     <div class="col-md-6">
                         <label class="form-label">批量上傳 Excel</label>
                         <input type="file" id="excelFile" class="form-control" accept=".xlsx, .xls, .csv">
-                        <div class="form-text small">Excel 欄位：車牌、PGVW、開始日期、有效日期、凌晨時段(Y/N)、區域</div>
+                        <div class="form-text small">Excel 欄位：車牌、PGVW、開始日期、有效日期、車輛每日上限、凌晨時段(Y/N)、區域</div>
                         <button onclick="batchUpload()" class="btn btn-outline-primary mt-2">⬆️ 上傳並自動合併</button>
                     </div>
                 </div>
@@ -199,14 +200,16 @@
                             <th class="sortable-header" onclick="sortTable(1)">PGVW</th>
                             <th class="sortable-header" onclick="sortTable(2)">開始日期</th>
                             <th class="sortable-header" onclick="sortTable(3)">有效日期</th>
-                            <th class="sortable-header" onclick="sortTable(4)">凌晨</th>
-                            <th class="sortable-header" onclick="sortTable(5)">區域</th>
-                            <th class="sortable-header" onclick="sortTable(6)">建立者</th>
+                            <th class="sortable-header" onclick="sortTable(4)">車輛每日上限</th>
+                            <th class="sortable-header" onclick="sortTable(5)">凌晨</th>
+                            <th class="sortable-header" onclick="sortTable(6)">區域</th>
+                            <th class="sortable-header" onclick="sortTable(7)">區域每日上限</th>
+                            <th class="sortable-header" onclick="sortTable(8)">建立者</th>
                             <th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="vehicleList">
-                        <tr><td colspan="8" class="text-center text-muted">載入中...</td></tr>
+                        <tr><td colspan="10" class="text-center text-muted">載入中...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -220,7 +223,7 @@
     let availableDistricts = [];
     let currentRole = "fehd";
     let vehiclesData = [];
-    let districtQuotaMap = {};  // 儲存各區域的每日上限
+    let districtQuotaMap = {};
     let sortColumn = -1;
     let sortDirection = 'asc';
     
@@ -327,10 +330,8 @@
                         districtSelect.innerHTML += `<option value="${d}">${d}</option>`;
                     });
                     
-                    // 載入區域配額
                     await loadDistrictQuota();
                     
-                    // 當選擇區域時，自動載入該區域的配額
                     districtSelect.onchange = function() {
                         const selectedDistrict = districtSelect.value;
                         if (selectedDistrict && districtQuotaMap[selectedDistrict]) {
@@ -351,6 +352,15 @@
         }
     }
     
+    function logout() {
+        currentSession = null;
+        document.getElementById('loginPage').style.display = 'block';
+        document.getElementById('mainPage').style.display = 'none';
+        document.getElementById('password').value = "";
+        document.getElementById('userId').value = "";
+        loadUserList();
+    }
+    
     async function loadDistrictQuota() {
         try {
             const response = await fetch(API_URL, {
@@ -366,46 +376,6 @@
             }
         } catch (err) {
             console.error("載入區域配額錯誤:", err);
-        }
-    }
-    
-    async function updateDistrictQuota() {
-        const districtSelect = document.getElementById('district');
-        const selectedDistrict = districtSelect.value;
-        const newLimit = parseInt(document.getElementById('districtDailyLimit').value);
-        
-        if (!selectedDistrict) {
-            alert("請先選擇所屬區域");
-            return;
-        }
-        
-        if (isNaN(newLimit) || newLimit < 0) {
-            alert("請輸入有效的每日上限數字");
-            return;
-        }
-        
-        showLoading(true);
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify({ 
-                    action: 'updateDistrictQuota', 
-                    district: selectedDistrict, 
-                    dailyLimit: newLimit,
-                    session: currentSession 
-                })
-            });
-            const result = await response.json();
-            if (result.success) {
-                alert(`已將 ${selectedDistrict} 的每日總上限更新為 ${newLimit}`);
-                districtQuotaMap[selectedDistrict] = newLimit;
-            } else {
-                alert("更新失敗：" + result.msg);
-            }
-        } catch (err) {
-            alert("網路錯誤：" + err);
-        } finally {
-            showLoading(false);
         }
     }
     
@@ -427,7 +397,7 @@
             }
         } catch (err) {
             console.error("網路錯誤:", err);
-            document.getElementById('vehicleList').innerHTML = '<tr><td colspan="8" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
+            document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
         } finally {
             showLoading(false);
         }
@@ -468,13 +438,15 @@
                     case 1: valA = a.pgvw || 0; valB = b.pgvw || 0; break;
                     case 2: valA = a.startDate || ''; valB = b.startDate || ''; break;
                     case 3: valA = a.expiryDate || ''; valB = b.expiryDate || ''; break;
-                    case 4: valA = a.midnight || 'N'; valB = b.midnight || 'N'; break;
-                    case 5: valA = a.district || ''; valB = b.district || ''; break;
-                    case 6: valA = a.createdBy || ''; valB = b.createdBy || ''; break;
+                    case 4: valA = a.vehicleDailyLimit || 5; valB = b.vehicleDailyLimit || 5; break;
+                    case 5: valA = a.midnight || 'N'; valB = b.midnight || 'N'; break;
+                    case 6: valA = a.district || ''; valB = b.district || ''; break;
+                    case 7: valA = a.districtDailyLimit || 0; valB = b.districtDailyLimit || 0; break;
+                    case 8: valA = a.createdBy || ''; valB = b.createdBy || ''; break;
                     default: valA = ''; valB = '';
                 }
                 
-                if (column === 1) {
+                if (column === 1 || column === 4 || column === 7) {
                     valA = Number(valA) || 0;
                     valB = Number(valB) || 0;
                     return direction === 'asc' ? valA - valB : valB - valA;
@@ -501,7 +473,7 @@
         const recordCountSpan = document.getElementById('recordCount');
         
         if (filteredData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">暫無資料</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">暫無資料</td></tr>';
             if (recordCountSpan) recordCountSpan.innerText = "0 筆";
             return;
         }
@@ -515,8 +487,10 @@
                     <td>${v.pgvw}</td>
                     <td>${startDateStr}</td>
                     <td>${expiryDateStr}</td>
+                    <td>${v.vehicleDailyLimit || 5}</td>
                     <td>${v.midnight === 'Y' ? '✅ 是' : '❌ 否'}</td>
                     <td>${escapeHtml(v.district)}</td>
+                    <td>${v.districtDailyLimit || 0}</td>
                     <td>${escapeHtml(v.createdBy) || '-'}</td>
                     <td>${currentRole === 'fehd' ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate.replace(/'/g, "\\'")}')">刪除</button>` : '🔍 唯讀'}</td>
                 </tr>
@@ -537,8 +511,9 @@
             pgvw: parseFloat(document.getElementById('pgvw').value),
             startDate: document.getElementById('startDate').value,
             expiryDate: document.getElementById('expiryDate').value,
-            district: document.getElementById('district').value,
-            midnight: document.getElementById('midnight').value
+            vehicleDailyLimit: parseInt(document.getElementById('vehicleDailyLimit').value) || 5,
+            midnight: document.getElementById('midnight').value,
+            district: document.getElementById('district').value
         };
         if (!data.plate || isNaN(data.pgvw) || data.pgvw <= 0 || !data.expiryDate || !data.district) {
             alert("請填寫完整資料");
@@ -555,6 +530,7 @@
                 alert(result.msg);
                 document.getElementById('plate').value = "";
                 document.getElementById('pgvw').value = "";
+                document.getElementById('vehicleDailyLimit').value = "5";
                 const today = new Date();
                 const yyyy = today.getFullYear();
                 const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -594,7 +570,7 @@
                 for (let i = 1; i < jsonData.length; i++) {
                     const row = jsonData[i];
                     if (!row[0] || String(row[0]).trim() === "") continue;
-                    const district = row[5] ? String(row[5]).trim() : "";
+                    const district = row[6] ? String(row[6]).trim() : "";
                     if (district && !availableDistricts.includes(district)) {
                         alert(`您沒有權限上傳區域 "${district}" 的車輛`);
                         continue;
@@ -604,7 +580,8 @@
                         pgvw: parseFloat(row[1]) || 0,
                         startDate: formatExcelDate(row[2]),
                         expiryDate: formatExcelDate(row[3]),
-                        midnight: String(row[4] || 'N').toUpperCase() === 'Y' ? 'Y' : 'N',
+                        vehicleDailyLimit: parseInt(row[4]) || 5,
+                        midnight: String(row[5] || 'N').toUpperCase() === 'Y' ? 'Y' : 'N',
                         district: district
                     });
                 }
@@ -695,7 +672,7 @@
                 alert("無資料可匯出");
                 return;
             }
-            const headers = ["車牌", "PGVW", "開始日期", "有效日期", "凌晨授權", "區域", "建立者"];
+            const headers = ["車牌", "PGVW", "開始日期", "有效日期", "車輛每日上限", "凌晨授權", "區域", "區域每日上限", "建立者"];
             const csvRows = [];
             csvRows.push(headers.join(","));
             for (const v of result.data) {
@@ -706,8 +683,10 @@
                     v.pgvw || "",
                     `"${startDate}"`,
                     `"${expiryDate}"`,
+                    v.vehicleDailyLimit || 5,
                     v.midnight === 'Y' ? "是" : "否",
                     `"${String(v.district || "").replace(/"/g, '""')}"`,
+                    v.districtDailyLimit || 0,
                     `"${String(v.createdBy || "").replace(/"/g, '""')}"`
                 ];
                 csvRows.push(row.join(","));
@@ -740,14 +719,15 @@
             });
             const result = await response.json();
             if (result.success && result.data.length > 0) {
-                const wsData = [["車牌", "PGVW", "開始日期", "有效日期", "凌晨授權", "區域", "建立者"]];
+                const wsData = [["車牌", "PGVW", "開始日期", "有效日期", "車輛每日上限", "凌晨授權", "區域", "區域每日上限", "建立者"]];
                 result.data.forEach(v => {
                     let startDate = v.startDate ? v.startDate.split('T')[0] : "";
                     let expiryDate = v.expiryDate ? v.expiryDate.split('T')[0] : "";
                     wsData.push([
                         v.plate, v.pgvw, startDate, expiryDate,
+                        v.vehicleDailyLimit || 5,
                         v.midnight === 'Y' ? '是' : '否',
-                        v.district, v.createdBy || ""
+                        v.district, v.districtDailyLimit || 0, v.createdBy || ""
                     ]);
                 });
                 const ws = XLSX.utils.aoa_to_sheet(wsData);
