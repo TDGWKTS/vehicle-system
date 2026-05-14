@@ -53,6 +53,11 @@
             background: white;
             z-index: 10;
         }
+        
+        select:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -317,8 +322,13 @@
                 const viewText = result.session.viewDistricts === "all" ? "所有區域" : result.session.viewDistricts.join("、");
                 document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<strong>${viewText}</strong>`;
                 if (currentRole === 'fehd') {
-                    availableDistricts = result.session.viewDistricts === "all" ? 
-                        ["屯門", "西九龍", "沙田", "葵青", "觀塘", "元朗"] : result.session.viewDistricts;
+                    // 根據用戶權限設定可選擇的區域
+                    if (result.session.viewDistricts === "all") {
+                        availableDistricts = ["屯門", "西九龍", "沙田", "葵青", "觀塘", "元朗"];
+                    } else {
+                        availableDistricts = result.session.viewDistricts;
+                    }
+                    
                     const districtSelect = document.getElementById('district');
                     districtSelect.innerHTML = '<option value="">請選擇</option>';
                     availableDistricts.forEach(d => {
@@ -328,25 +338,33 @@
                     // 載入區域配額
                     await loadDistrictQuota();
                     
-                    // 設定 onchange 事件 - 關鍵修正！
-                    districtSelect.onchange = function() {
-                        const selectedDistrict = districtSelect.value;
-                        console.log("選擇區域:", selectedDistrict);
-                        console.log("districtQuotaMap:", districtQuotaMap);
-                        
-                        if (selectedDistrict && districtQuotaMap[selectedDistrict] !== undefined) {
-                            const quota = districtQuotaMap[selectedDistrict];
-                            document.getElementById('districtDailyLimit').value = quota;
-                            console.log(`✅ 設定 ${selectedDistrict} 的區域每日上限為: ${quota}`);
+                    // 關鍵：如果用戶不是超級管理員，自動設為所屬區域並禁用下拉選單
+                    if (result.session.role !== "超級管理員" && result.session.district) {
+                        const userDistrict = result.session.district;
+                        // 設定下拉選單的值
+                        districtSelect.value = userDistrict;
+                        // 禁用下拉選單（區域主管只能看到自己的區域）
+                        districtSelect.disabled = true;
+                        districtSelect.style.backgroundColor = "#e9ecef";
+                        // 更新區域每日上限
+                        if (districtQuotaMap[userDistrict] !== undefined) {
+                            document.getElementById('districtDailyLimit').value = districtQuotaMap[userDistrict];
                         } else {
                             document.getElementById('districtDailyLimit').value = 50;
-                            console.log(`⚠️ 找不到 ${selectedDistrict} 的配額，使用預設值 50`);
                         }
-                    };
-                    
-                    // 如果已經有預設選擇，手動觸發一次
-                    if (districtSelect.value) {
-                        districtSelect.onchange();
+                        console.log(`✅ 自動設定所屬區域為: ${userDistrict}，區域每日上限: ${document.getElementById('districtDailyLimit').value}`);
+                    } else {
+                        // 超級管理員可以選擇所有區域
+                        districtSelect.disabled = false;
+                        // 設定 onchange 事件
+                        districtSelect.onchange = function() {
+                            const selectedDistrict = districtSelect.value;
+                            if (selectedDistrict && districtQuotaMap[selectedDistrict] !== undefined) {
+                                document.getElementById('districtDailyLimit').value = districtQuotaMap[selectedDistrict];
+                            } else {
+                                document.getElementById('districtDailyLimit').value = 50;
+                            }
+                        };
                     }
                 }
                 loadVehicles();
