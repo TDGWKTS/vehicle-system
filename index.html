@@ -53,11 +53,6 @@
             background: white;
             z-index: 10;
         }
-        
-        .quota-input-small {
-            width: 100px;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -105,7 +100,7 @@
         
         <!-- 新增/編輯表單（轉運站職員隱藏） -->
         <div id="vehicleFormSection" class="card">
-            <div class="card-header">📝 單筆車輛資料 / 區域每日總上限設定</div>
+            <div class="card-header">📝 單筆車輛資料</div>
             <div class="card-body">
                 <form id="vehicleForm">
                     <div class="row g-3">
@@ -145,7 +140,7 @@
                         <div class="col-md-3">
                             <label class="form-label">區域每日上限</label>
                             <input type="number" id="districtDailyLimit" class="form-control" value="50" min="0" step="1" readonly style="background-color: #e9ecef;">
-                            <div class="form-text small">自動載入，如需修改請聯絡管理員</div>
+                            <div class="form-text text-muted small">💡 由管理員在 Google Sheet 設定，如需修改請聯絡管理員</div>
                         </div>
                         <div class="col-12">
                             <button type="submit" class="btn btn-primary w-100">✅ 儲存車輛資料</button>
