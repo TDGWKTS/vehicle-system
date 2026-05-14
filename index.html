@@ -53,6 +53,11 @@
             background: white;
             z-index: 10;
         }
+        
+        /* 公司配額表格 */
+        .quota-table { margin-top: 10px; }
+        .quota-table th, .quota-table td { padding: 8px; text-align: center; }
+        .quota-input { width: 80px; text-align: center; }
     </style>
 </head>
 <body>
@@ -98,6 +103,30 @@
         <!-- 可查看區域提示 -->
         <div class="alert alert-info small" id="viewHint"></div>
         
+        <!-- 公司每日總上限設定區（食環署主管可見） -->
+        <div id="companyQuotaSection" class="card">
+            <div class="card-header">🏢 公司每日總上限設定</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm quota-table" id="companyQuotaTable">
+                        <thead>
+                            <tr>
+                                <th>區域（公司）</th>
+                                <th>每日總上限</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="companyQuotaList">
+                            <tr><td colspan="3" class="text-center text-muted">載入中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-2 text-muted small">
+                    💡 提示：每日總上限是指該區域所有車輛每天總共可以進入轉運站的次數。
+                </div>
+            </div>
+        </div>
+        
         <!-- 新增/編輯表單（轉運站職員隱藏） -->
         <div id="vehicleFormSection" class="card">
             <div class="card-header">📝 單筆車輛資料</div>
@@ -111,10 +140,6 @@
                         <div class="col-md-2">
                             <label class="form-label">PGVW (噸) *</label>
                             <input type="number" id="pgvw" class="form-control" step="0.1" required placeholder="5.5">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">每日上限 *</label>
-                            <input type="number" id="dailyLimit" class="form-control" value="5" required placeholder="5">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">開始日期</label>
@@ -153,7 +178,7 @@
                     <div class="col-md-6">
                         <label class="form-label">批量上傳 Excel</label>
                         <input type="file" id="excelFile" class="form-control" accept=".xlsx, .xls, .csv">
-                        <div class="form-text small">Excel 欄位：車牌、PGVW、開始日期、有效日期、每日上限、凌晨時段(Y/N)、區域</div>
+                        <div class="form-text small">Excel 欄位：車牌、PGVW、開始日期、有效日期、凌晨時段(Y/N)、區域</div>
                         <button onclick="batchUpload()" class="btn btn-outline-primary mt-2">⬆️ 上傳並自動合併</button>
                     </div>
                 </div>
@@ -188,17 +213,16 @@
                         <tr style="position: sticky; top: 0; background: white;">
                             <th class="sortable-header" onclick="sortTable(0)">車牌</th>
                             <th class="sortable-header" onclick="sortTable(1)">PGVW</th>
-                            <th class="sortable-header" onclick="sortTable(2)">每日上限</th>
-                            <th class="sortable-header" onclick="sortTable(3)">開始日期</th>
-                            <th class="sortable-header" onclick="sortTable(4)">有效日期</th>
-                            <th class="sortable-header" onclick="sortTable(5)">凌晨</th>
-                            <th class="sortable-header" onclick="sortTable(6)">區域</th>
-                            <th class="sortable-header" onclick="sortTable(7)">建立者</th>
+                            <th class="sortable-header" onclick="sortTable(2)">開始日期</th>
+                            <th class="sortable-header" onclick="sortTable(3)">有效日期</th>
+                            <th class="sortable-header" onclick="sortTable(4)">凌晨</th>
+                            <th class="sortable-header" onclick="sortTable(5)">區域</th>
+                            <th class="sortable-header" onclick="sortTable(6)">建立者</th>
                             <th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="vehicleList">
-                        <tr><td colspan="9" class="text-center text-muted">載入中......</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted">載入中...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -212,6 +236,7 @@
     let availableDistricts = [];
     let currentRole = "fehd";
     let vehiclesData = [];
+    let companyQuotaData = [];
     let sortColumn = -1;
     let sortDirection = 'asc';
     
@@ -229,12 +254,14 @@
             document.getElementById('loginBtn').innerHTML = '食環署登入';
             document.getElementById('vehicleFormSection').style.display = 'block';
             document.getElementById('batchSection').style.display = 'block';
+            document.getElementById('companyQuotaSection').style.display = 'block';
         } else {
             document.getElementById('loginTitle').innerHTML = '⚖️ 轉運站車輛查詢系統';
             document.getElementById('mainTitle').innerHTML = '⚖️ 轉運站車輛查詢系統';
             document.getElementById('loginBtn').innerHTML = '轉運站登入';
             document.getElementById('vehicleFormSection').style.display = 'none';
             document.getElementById('batchSection').style.display = 'none';
+            document.getElementById('companyQuotaSection').style.display = 'none';
         }
         
         const today = new Date();
@@ -319,6 +346,7 @@
                     });
                 }
                 loadVehicles();
+                loadCompanyQuota();
             } else {
                 alert("登入失敗：" + result.msg);
             }
@@ -336,6 +364,85 @@
         document.getElementById('password').value = "";
         document.getElementById('userId').value = "";
         loadUserList();
+    }
+    
+    async function loadCompanyQuota() {
+        if (!currentSession || currentRole !== 'fehd') return;
+        
+        showLoading(true);
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'getCompanyQuota', session: currentSession })
+            });
+            const result = await response.json();
+            if (result.success && result.data) {
+                companyQuotaData = result.data;
+                displayCompanyQuota();
+            }
+        } catch (err) {
+            console.error("載入公司配額錯誤:", err);
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    function displayCompanyQuota() {
+        const tbody = document.getElementById('companyQuotaList');
+        if (!companyQuotaData || companyQuotaData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">暫無公司資料</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = companyQuotaData.map(q => `
+            <tr>
+                <td><strong>${escapeHtml(q.district)}</strong></td>
+                <td>
+                    <input type="number" id="quota_${q.district.replace(/\s/g, '')}" 
+                           class="form-control quota-input" value="${q.dailyLimit}" 
+                           min="0" step="1" style="width: 100px; display: inline-block;">
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="updateCompanyQuota('${q.district.replace(/'/g, "\\'")}')">
+                        💾 儲存
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    async function updateCompanyQuota(district) {
+        const inputId = `quota_${district.replace(/\s/g, '')}`;
+        const newLimit = parseInt(document.getElementById(inputId).value);
+        
+        if (isNaN(newLimit) || newLimit < 0) {
+            alert("請輸入有效的數字");
+            return;
+        }
+        
+        showLoading(true);
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    action: 'updateCompanyQuota', 
+                    district: district, 
+                    dailyLimit: newLimit,
+                    session: currentSession 
+                })
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert(`已將 ${district} 的每日總上限更新為 ${newLimit}`);
+                loadCompanyQuota();
+            } else {
+                alert("更新失敗：" + result.msg);
+            }
+        } catch (err) {
+            alert("網路錯誤：" + err);
+        } finally {
+            showLoading(false);
+        }
     }
     
     async function loadVehicles() {
@@ -356,7 +463,7 @@
             }
         } catch (err) {
             console.error("網路錯誤:", err);
-            document.getElementById('vehicleList').innerHTML = '<tr><td colspan="9" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
+            document.getElementById('vehicleList').innerHTML = '<tr><td colspan="8" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
         } finally {
             showLoading(false);
         }
@@ -395,22 +502,21 @@
                 switch(column) {
                     case 0: valA = a.plate || ''; valB = b.plate || ''; break;
                     case 1: valA = a.pgvw || 0; valB = b.pgvw || 0; break;
-                    case 2: valA = a.dailyLimit || 5; valB = b.dailyLimit || 5; break;
-                    case 3: valA = a.startDate || ''; valB = b.startDate || ''; break;
-                    case 4: valA = a.expiryDate || ''; valB = b.expiryDate || ''; break;
-                    case 5: valA = a.midnight || 'N'; valB = b.midnight || 'N'; break;
-                    case 6: valA = a.district || ''; valB = b.district || ''; break;
-                    case 7: valA = a.createdBy || ''; valB = b.createdBy || ''; break;
+                    case 2: valA = a.startDate || ''; valB = b.startDate || ''; break;
+                    case 3: valA = a.expiryDate || ''; valB = b.expiryDate || ''; break;
+                    case 4: valA = a.midnight || 'N'; valB = b.midnight || 'N'; break;
+                    case 5: valA = a.district || ''; valB = b.district || ''; break;
+                    case 6: valA = a.createdBy || ''; valB = b.createdBy || ''; break;
                     default: valA = ''; valB = '';
                 }
                 
-                if (column === 1 || column === 2) {
+                if (column === 1) {
                     valA = Number(valA) || 0;
                     valB = Number(valB) || 0;
                     return direction === 'asc' ? valA - valB : valB - valA;
                 }
                 
-                if (column === 3 || column === 4) {
+                if (column === 2 || column === 3) {
                     if (!valA) valA = '';
                     if (!valB) valB = '';
                     if (valA < valB) return direction === 'asc' ? -1 : 1;
@@ -431,7 +537,7 @@
         const recordCountSpan = document.getElementById('recordCount');
         
         if (filteredData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">暫無資料</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">暫無資料</td></tr>';
             if (recordCountSpan) recordCountSpan.innerText = "0 筆";
             return;
         }
@@ -443,7 +549,6 @@
                 <tr>
                     <td><strong>${escapeHtml(v.plate)}</strong></td>
                     <td>${v.pgvw}</td>
-                    <td>${v.dailyLimit || 5}</td>
                     <td>${startDateStr}</td>
                     <td>${expiryDateStr}</td>
                     <td>${v.midnight === 'Y' ? '✅ 是' : '❌ 否'}</td>
@@ -466,7 +571,6 @@
         const data = {
             plate: document.getElementById('plate').value.trim().toUpperCase(),
             pgvw: parseFloat(document.getElementById('pgvw').value),
-            dailyLimit: parseInt(document.getElementById('dailyLimit').value) || 5,
             startDate: document.getElementById('startDate').value,
             expiryDate: document.getElementById('expiryDate').value,
             district: document.getElementById('district').value,
@@ -526,7 +630,7 @@
                 for (let i = 1; i < jsonData.length; i++) {
                     const row = jsonData[i];
                     if (!row[0] || String(row[0]).trim() === "") continue;
-                    const district = row[6] ? String(row[6]).trim() : "";
+                    const district = row[5] ? String(row[5]).trim() : "";
                     if (district && !availableDistricts.includes(district)) {
                         alert(`您沒有權限上傳區域 "${district}" 的車輛`);
                         continue;
@@ -536,8 +640,7 @@
                         pgvw: parseFloat(row[1]) || 0,
                         startDate: formatExcelDate(row[2]),
                         expiryDate: formatExcelDate(row[3]),
-                        dailyLimit: parseInt(row[4]) || 5,
-                        midnight: String(row[5] || 'N').toUpperCase() === 'Y' ? 'Y' : 'N',
+                        midnight: String(row[4] || 'N').toUpperCase() === 'Y' ? 'Y' : 'N',
                         district: district
                     });
                 }
@@ -628,7 +731,7 @@
                 alert("無資料可匯出");
                 return;
             }
-            const headers = ["車牌", "PGVW", "開始日期", "有效日期", "每日上限", "凌晨授權", "區域", "建立者"];
+            const headers = ["車牌", "PGVW", "開始日期", "有效日期", "凌晨授權", "區域", "建立者"];
             const csvRows = [];
             csvRows.push(headers.join(","));
             for (const v of result.data) {
@@ -639,7 +742,6 @@
                     v.pgvw || "",
                     `"${startDate}"`,
                     `"${expiryDate}"`,
-                    v.dailyLimit || 5,
                     v.midnight === 'Y' ? "是" : "否",
                     `"${String(v.district || "").replace(/"/g, '""')}"`,
                     `"${String(v.createdBy || "").replace(/"/g, '""')}"`
@@ -674,13 +776,13 @@
             });
             const result = await response.json();
             if (result.success && result.data.length > 0) {
-                const wsData = [["車牌", "PGVW", "開始日期", "有效日期", "每日上限", "凌晨授權", "區域", "建立者"]];
+                const wsData = [["車牌", "PGVW", "開始日期", "有效日期", "凌晨授權", "區域", "建立者"]];
                 result.data.forEach(v => {
                     let startDate = v.startDate ? v.startDate.split('T')[0] : "";
                     let expiryDate = v.expiryDate ? v.expiryDate.split('T')[0] : "";
                     wsData.push([
                         v.plate, v.pgvw, startDate, expiryDate,
-                        v.dailyLimit || 5, v.midnight === 'Y' ? '是' : '否',
+                        v.midnight === 'Y' ? '是' : '否',
                         v.district, v.createdBy || ""
                     ]);
                 });
