@@ -213,7 +213,7 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbyAzYXGpsPoXq1AA3njK_zj7ggouBa_rn-Ya8oxjunYoAsb2-PK72AgfbVpWKrWZUkemw/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbz9Z0fSeNPABKL-RkJU5cnIo7YLX9s18tT5CH4iM7kzaru-F1gsyoHCWe-tfRELsKDFcA/exec";
     let currentSession = null;
     let availableDistricts = [];
     let currentRole = "fehd";
@@ -325,16 +325,29 @@
                         districtSelect.innerHTML += `<option value="${d}">${d}</option>`;
                     });
                     
+                    // 載入區域配額
                     await loadDistrictQuota();
                     
+                    // 設定 onchange 事件 - 關鍵修正！
                     districtSelect.onchange = function() {
                         const selectedDistrict = districtSelect.value;
-                        if (selectedDistrict && districtQuotaMap[selectedDistrict]) {
-                            document.getElementById('districtDailyLimit').value = districtQuotaMap[selectedDistrict];
+                        console.log("選擇區域:", selectedDistrict);
+                        console.log("districtQuotaMap:", districtQuotaMap);
+                        
+                        if (selectedDistrict && districtQuotaMap[selectedDistrict] !== undefined) {
+                            const quota = districtQuotaMap[selectedDistrict];
+                            document.getElementById('districtDailyLimit').value = quota;
+                            console.log(`✅ 設定 ${selectedDistrict} 的區域每日上限為: ${quota}`);
                         } else {
                             document.getElementById('districtDailyLimit').value = 50;
+                            console.log(`⚠️ 找不到 ${selectedDistrict} 的配額，使用預設值 50`);
                         }
                     };
+                    
+                    // 如果已經有預設選擇，手動觸發一次
+                    if (districtSelect.value) {
+                        districtSelect.onchange();
+                    }
                 }
                 loadVehicles();
             } else {
@@ -358,16 +371,24 @@
     
     async function loadDistrictQuota() {
         try {
+            console.log("開始載入區域配額...");
             const response = await fetch(API_URL, {
                 method: 'POST',
                 body: JSON.stringify({ action: 'getDistrictQuota', session: currentSession })
             });
             const result = await response.json();
+            console.log("API 回應:", result);
+            
             if (result.success && result.data) {
                 districtQuotaMap = {};
-                result.data.forEach(q => {
+                for (let i = 0; i < result.data.length; i++) {
+                    const q = result.data[i];
                     districtQuotaMap[q.district] = q.dailyLimit;
-                });
+                    console.log(`✅ 已載入: ${q.district} = ${q.dailyLimit}`);
+                }
+                console.log("最終 districtQuotaMap:", districtQuotaMap);
+            } else {
+                console.error("載入區域配額失敗:", result);
             }
         } catch (err) {
             console.error("載入區域配額錯誤:", err);
