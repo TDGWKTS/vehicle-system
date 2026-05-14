@@ -54,10 +54,10 @@
             z-index: 10;
         }
         
-        /* 公司配額表格 */
-        .quota-table { margin-top: 10px; }
-        .quota-table th, .quota-table td { padding: 8px; text-align: center; }
-        .quota-input { width: 80px; text-align: center; }
+        .quota-input-small {
+            width: 100px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -103,33 +103,9 @@
         <!-- 可查看區域提示 -->
         <div class="alert alert-info small" id="viewHint"></div>
         
-        <!-- 公司每日總上限設定區（食環署主管可見） -->
-        <div id="companyQuotaSection" class="card">
-            <div class="card-header">🏢 公司每日總上限設定</div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered table-sm quota-table" id="companyQuotaTable">
-                        <thead>
-                            <tr>
-                                <th>區域（公司）</th>
-                                <th>每日總上限</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="companyQuotaList">
-                            <tr><td colspan="3" class="text-center text-muted">載入中...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="mt-2 text-muted small">
-                    💡 提示：每日總上限是指該區域所有車輛每天總共可以進入轉運站的次數。
-                </div>
-            </div>
-        </div>
-        
         <!-- 新增/編輯表單（轉運站職員隱藏） -->
         <div id="vehicleFormSection" class="card">
-            <div class="card-header">📝 單筆車輛資料</div>
+            <div class="card-header">📝 單筆車輛資料 / 區域每日總上限設定</div>
             <div class="card-body">
                 <form id="vehicleForm">
                     <div class="row g-3">
@@ -161,6 +137,14 @@
                             <select id="district" class="form-select" required>
                                 <option value="">請選擇</option>
                             </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">區域每日上限</label>
+                            <div class="input-group">
+                                <input type="number" id="districtDailyLimit" class="form-control" value="50" min="0" step="1">
+                                <button type="button" class="btn btn-outline-primary" onclick="updateDistrictQuota()">儲存</button>
+                            </div>
+                            <div class="form-text small">設定該區域所有車輛每日總次數上限</div>
                         </div>
                         <div class="col-12">
                             <button type="submit" class="btn btn-primary w-100">✅ 儲存車輛資料</button>
@@ -236,7 +220,7 @@
     let availableDistricts = [];
     let currentRole = "fehd";
     let vehiclesData = [];
-    let companyQuotaData = [];
+    let districtQuotaMap = {};  // 儲存各區域的每日上限
     let sortColumn = -1;
     let sortDirection = 'asc';
     
@@ -254,14 +238,12 @@
             document.getElementById('loginBtn').innerHTML = '食環署登入';
             document.getElementById('vehicleFormSection').style.display = 'block';
             document.getElementById('batchSection').style.display = 'block';
-            document.getElementById('companyQuotaSection').style.display = 'block';
         } else {
             document.getElementById('loginTitle').innerHTML = '⚖️ 轉運站車輛查詢系統';
             document.getElementById('mainTitle').innerHTML = '⚖️ 轉運站車輛查詢系統';
             document.getElementById('loginBtn').innerHTML = '轉運站登入';
             document.getElementById('vehicleFormSection').style.display = 'none';
             document.getElementById('batchSection').style.display = 'none';
-            document.getElementById('companyQuotaSection').style.display = 'none';
         }
         
         const today = new Date();
@@ -344,9 +326,21 @@
                     availableDistricts.forEach(d => {
                         districtSelect.innerHTML += `<option value="${d}">${d}</option>`;
                     });
+                    
+                    // 載入區域配額
+                    await loadDistrictQuota();
+                    
+                    // 當選擇區域時，自動載入該區域的配額
+                    districtSelect.onchange = function() {
+                        const selectedDistrict = districtSelect.value;
+                        if (selectedDistrict && districtQuotaMap[selectedDistrict]) {
+                            document.getElementById('districtDailyLimit').value = districtQuotaMap[selectedDistrict];
+                        } else {
+                            document.getElementById('districtDailyLimit').value = 50;
+                        }
+                    };
                 }
                 loadVehicles();
-                loadCompanyQuota();
             } else {
                 alert("登入失敗：" + result.msg);
             }
@@ -357,66 +351,36 @@
         }
     }
     
-    function logout() {
-        currentSession = null;
-        document.getElementById('loginPage').style.display = 'block';
-        document.getElementById('mainPage').style.display = 'none';
-        document.getElementById('password').value = "";
-        document.getElementById('userId').value = "";
-        loadUserList();
-    }
-    
-    async function loadCompanyQuota() {
-        if (!currentSession || currentRole !== 'fehd') return;
-        
-        showLoading(true);
+    async function loadDistrictQuota() {
         try {
             const response = await fetch(API_URL, {
                 method: 'POST',
-                body: JSON.stringify({ action: 'getCompanyQuota', session: currentSession })
+                body: JSON.stringify({ action: 'getDistrictQuota', session: currentSession })
             });
             const result = await response.json();
             if (result.success && result.data) {
-                companyQuotaData = result.data;
-                displayCompanyQuota();
+                districtQuotaMap = {};
+                result.data.forEach(q => {
+                    districtQuotaMap[q.district] = q.dailyLimit;
+                });
             }
         } catch (err) {
-            console.error("載入公司配額錯誤:", err);
-        } finally {
-            showLoading(false);
+            console.error("載入區域配額錯誤:", err);
         }
     }
     
-    function displayCompanyQuota() {
-        const tbody = document.getElementById('companyQuotaList');
-        if (!companyQuotaData || companyQuotaData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">暫無公司資料</td></tr>';
+    async function updateDistrictQuota() {
+        const districtSelect = document.getElementById('district');
+        const selectedDistrict = districtSelect.value;
+        const newLimit = parseInt(document.getElementById('districtDailyLimit').value);
+        
+        if (!selectedDistrict) {
+            alert("請先選擇所屬區域");
             return;
         }
         
-        tbody.innerHTML = companyQuotaData.map(q => `
-            <tr>
-                <td><strong>${escapeHtml(q.district)}</strong></td>
-                <td>
-                    <input type="number" id="quota_${q.district.replace(/\s/g, '')}" 
-                           class="form-control quota-input" value="${q.dailyLimit}" 
-                           min="0" step="1" style="width: 100px; display: inline-block;">
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="updateCompanyQuota('${q.district.replace(/'/g, "\\'")}')">
-                        💾 儲存
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-    }
-    
-    async function updateCompanyQuota(district) {
-        const inputId = `quota_${district.replace(/\s/g, '')}`;
-        const newLimit = parseInt(document.getElementById(inputId).value);
-        
         if (isNaN(newLimit) || newLimit < 0) {
-            alert("請輸入有效的數字");
+            alert("請輸入有效的每日上限數字");
             return;
         }
         
@@ -425,16 +389,16 @@
             const response = await fetch(API_URL, {
                 method: 'POST',
                 body: JSON.stringify({ 
-                    action: 'updateCompanyQuota', 
-                    district: district, 
+                    action: 'updateDistrictQuota', 
+                    district: selectedDistrict, 
                     dailyLimit: newLimit,
                     session: currentSession 
                 })
             });
             const result = await response.json();
             if (result.success) {
-                alert(`已將 ${district} 的每日總上限更新為 ${newLimit}`);
-                loadCompanyQuota();
+                alert(`已將 ${selectedDistrict} 的每日總上限更新為 ${newLimit}`);
+                districtQuotaMap[selectedDistrict] = newLimit;
             } else {
                 alert("更新失敗：" + result.msg);
             }
