@@ -6,7 +6,7 @@
     <title>車輛管理系統 | 動態配額管制</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        <script src="./xlsx.full.min.js"></script>
+    <script src="./xlsx.full.min.js" onerror="this.onerror=null; this.src='https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js';"></script>
     <style>
         :root {
             --mc-bg: #D8F0D2;
@@ -242,7 +242,6 @@
 </head>
 <body>
 
-<!-- 登入頁面 -->
 <div id="loginPage" class="login-container">
     <div class="login-box">
         <div class="logo-dual">
@@ -263,7 +262,6 @@
     </div>
 </div>
 
-<!-- 主控台 -->
 <div id="mainPage" style="display: none;">
     <div class="dashboard-wrapper">
         <div id="sidebar">
@@ -303,7 +301,17 @@
                             <div class="col-md-2"><label class="form-label fw-semibold">有效日期 *</label><input type="date" id="expiryDate" class="form-control" required></div>
                             <div class="col-md-2"><label class="form-label fw-semibold">車輛每日上限 *</label><input type="number" id="vehicleDailyLimit" class="form-control" value="5" required></div>
                             <div class="col-md-2"><label class="form-label fw-semibold">凌晨授權</label><select id="midnight" class="form-select"><option value="N">否</option><option value="Y">是</option></select></div>
-                            <div class="col-md-3"><label class="form-label fw-semibold">所屬區域 *</label><select id="district" class="form-select" required><option value="">請選擇</option></select></div>
+                            
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold w-100">
+                                    <span class="d-block mb-1">所屬區域 *</span>
+                                    <span class="d-block small text-muted fw-normal" style="font-size: 0.75rem; color: #5a7c4e !important;">
+                                        (食環署權限) 凌晨車輛受區域配額限制
+                                    </span>
+                                </label>
+                                <select id="district" class="form-select" required><option value="">請選擇</option></select>
+                            </div>
+                            
                             <div class="col-md-3"><label class="form-label fw-semibold">區域每日上限</label><input type="number" id="districtDailyLimit" class="form-control" value="50" readonly style="background-color: #eef3e9;"><div class="form-text text-muted small">💡 由管理員在 Google Sheet 設定</div></div>
                             <div class="col-12"><button type="submit" class="btn btn-success w-100 py-2 fw-semibold" style="background: #3f6e37; border: none; border-radius: 40px;">✅ 儲存車輛資料</button></div>
                         </div>
@@ -324,15 +332,11 @@
             
             <div id="midnightQuotaSection" class="card-custom card">
                 <div class="card-header-custom d-flex justify-content-between align-items-center">
-    <span>🌙 各區凌晨授權車輛配額現況（點擊區域篩選車輛）</span>
-    <button onclick="toggleMidnightTop()" 
-            id="midnightTopBtn"
-            class="btn btn-sm btn-success" 
-            title="點擊將凌晨授權車輛排在最上方"
-            style="border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; background: #2b7340; border: none;">
-        <i class="fas fa-moon me-1"></i> 凌晨車輛置頂
-    </button>
-</div>
+                    <span>🌙 各區凌晨授權車輛配額現況（點擊區域篩選車輛）</span>
+                    <button onclick="toggleMidnightTop()" id="midnightTopBtn" class="btn btn-sm btn-success" title="點擊將凌晨授權車輛排在最上方" style="border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; background: #2b7340; border: none;">
+                        <i class="fas fa-moon me-1"></i> 凌晨車輛置頂
+                    </button>
+                </div>
                 <div class="card-body p-3" id="midnightQuotaSummary" style="max-height: 200px; overflow-y: auto; background: #fefce8;">
                     <div class="text-muted small">載入配額數據中...</div>
                 </div>
@@ -348,7 +352,9 @@
                         <thead>
                             <tr><th class="sortable-header" onclick="sortTable(0)">車牌 ⬍</th><th class="sortable-header" onclick="sortTable(1)">PGVW ⬍</th><th class="sortable-header" onclick="sortTable(2)">開始日期</th><th class="sortable-header" onclick="sortTable(3)">有效日期</th><th class="sortable-header" onclick="sortTable(4)">車輛每日上限</th><th class="sortable-header" onclick="sortTable(5)">凌晨</th><th class="sortable-header" onclick="sortTable(6)">區域</th><th class="sortable-header" onclick="sortTable(7)">區域每日上限</th><th class="sortable-header" onclick="sortTable(8)">建立者</th><th>操作</th></tr>
                         </thead>
-                        <tbody id="vehicleList"><tr><td colspan="10" class="text-center text-muted py-4">載入中... 請稍後</td></tr></tbody>
+                        <tbody id="vehicleList">
+                            <tr><td colspan="10" class="text-center text-muted py-4">載入中... 請稍後</td></tr>
+                        </tbody>
                     </table>
                 </div>
                 <div id="paginationControls" class="pagination-container" style="display: none;"></div>
@@ -371,25 +377,21 @@
     let currentUserViewDistricts = [];
     let currentSelectedFilterDistrict = null;
     let isMidnightTopActive = false; // 🌙 凌晨車輛置頂狀態控制
+    let midnightQuotaMap = {}; // 修正漏宣告
+    let quotaCacheExpiry = null;
 
     // ======================= 全港區域對照表（標準化字典） =======================
     const DISTRICT_DICTIONARY = {
-        // 港島區
         "central & western": "Central & Western", "central": "Central & Western", "中西區": "Central & Western", "中西区": "Central & Western",
         "wan chai": "Wan Chai", "wanchai": "Wan Chai", "灣仔": "Wan Chai", "湾仔": "Wan Chai",
         "eastern": "Eastern", "東區": "Eastern", "东区": "Eastern",
         "southern": "Southern", "南區": "Southern", "南区": "Southern",
-
-        // 九龍區
         "sham shui po": "Sham Shui Po", "ssp": "Sham Shui Po", "深水埗": "Sham Shui Po",
         "mong kok": "Mong Kok", "mk": "Mong Kok", "旺角": "Mong Kok",
-        "yau tsim": "Yau Tsim", "油尖": "Yau Tsim",
-        "yau tsim mong": "Yau Tsim", "ytm": "Yau Tsim", "油尖旺": "Yau Tsim",
+        "yau tsim": "Yau Tsim", "油尖": "Yau Tsim", "yau tsim mong": "Yau Tsim", "ytm": "Yau Tsim", "油尖旺": "Yau Tsim",
         "kowloon city": "Kowloon City", "kc": "Kowloon City", "九龍城": "Kowloon City", "九龙城": "Kowloon City",
-        "wong tai sin": "Wong Tai Sin", "wts": "Wong Tai Sin", "黃大仙": "Wong Tai Sin", "黄大仙": "Wong Tai Sin",
+        "wong tai sin": "Wong Tai Sin", "wts": "Wong Tai Sin", "黃大仙": "Wong Tai Sin", "红大仙": "Wong Tai Sin",
         "kwun tong": "Kwun Tong", "kt": "Kwun Tong", "觀塘": "Kwun Tong", "观塘": "Kwun Tong",
-
-        // 新界區
         "tuen mun": "Tuen Mun", "tm": "Tuen Mun", "屯門": "Tuen Mun", "屯门": "Tuen Mun",
         "yuen long": "Yuen Long", "yl": "Yuen Long", "元朗": "Yuen Long",
         "sha tin": "Sha Tin", "shatin": "Sha Tin", "st": "Sha Tin", "沙田": "Sha Tin",
@@ -399,12 +401,9 @@
         "sai kung": "Sai Kung", "sk": "Sai Kung", "西貢": "Sai Kung", "西贡": "Sai Kung",
         "tsuen wan": "Tsuen Wan", "tw": "Tsuen Wan", "荃灣": "Tsuen Wan", "荃湾": "Tsuen Wan",
         "islands": "Islands", "離島": "Islands", "离岛": "Islands",
-
-        // 特殊全港權限
         "hk, kln & n.t.": "HK, KLN & NT", "hk, kln & nt": "HK, KLN & NT", "全港": "HK, KLN & NT", "香港九龍新界": "HK, KLN & NT"
     };
 
-    // 標準化函數
     function standardizeDistrict(districtName) {
         if (!districtName) return "";
         const key = String(districtName).trim().toLowerCase().replace(/\s+/g, ' ');
@@ -437,7 +436,6 @@
     
     // ======================= 配額數據（從 Google Sheet CSV 讀取） =======================
     const MIDNIGHT_QUOTA_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vThKueDlAW8Zv2quZY56FWqeWApgRvLjIIXE7c0P05IT3BClyxWypRciJadO7Swu75X_9kAWDNt5vgk/pub?gid=1525879179&single=true&output=csv";
-    let quotaCacheExpiry = null;
     
     async function loadMidnightQuotaFromSheet(forceRefresh = false) {
         if (!forceRefresh && quotaCacheExpiry && Date.now() < quotaCacheExpiry && Object.keys(midnightQuotaMap).length > 0) {
@@ -783,11 +781,8 @@
                     }
                 }
                 
-                // 立即渲染畫面（零延遲）
                 filterTable();
                 updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
-                
-                // 背景靜默刷新
                 loadVehicles(true); 
                 
             } else { alert("登入失敗：" + result.msg); }
@@ -822,7 +817,7 @@
         filterTable(); 
     }
     
-    // ======================= 關鍵核心：包含「凌晨車輛置頂」的篩選排序邏輯 =======================
+    // ======================= 篩選與置頂邏輯 =======================
     function filterTable() { 
         const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || ''; 
         let filteredData = [...vehiclesData];
@@ -835,7 +830,6 @@
             );
         }
         
-        // 欄位基礎排序
         if (sortColumn !== -1 && filteredData.length) {
             filteredData.sort((a,b) => {
                 let valA, valB;
@@ -860,7 +854,6 @@
             });
         }
         
-        // 🌟 重點：如果啟用了置頂，強行把凌晨車輛 (Y) 堆到最前面，同時保持原有的基礎排序
         if (isMidnightTopActive && filteredData.length) {
             filteredData.sort((a, b) => {
                 const valA = (a.midnight === 'Y') ? 1 : 0;
@@ -874,7 +867,6 @@
         renderCurrentPageData();
     }
     
-    // 🌟 切換凌晨車輛置頂狀態的控制函數
     function toggleMidnightTop() {
         isMidnightTopActive = !isMidnightTopActive;
         const btn = document.getElementById('midnightTopBtn');
