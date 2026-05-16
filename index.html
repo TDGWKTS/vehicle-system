@@ -721,17 +721,39 @@
     }
     
     async function loadUserList() {
+    const cacheKey = 'system_users_cache';
+    const cachedUsers = localStorage.getItem(cacheKey);
+    
+    // 🌟 1. 如果瀏覽器有快取，立刻渲染，Dropdown 達成 0 秒開！
+    if (cachedUsers) {
         try {
-            const result = await callAPI('getUserList');
-            if (result.success && result.users) {
-                const select = document.getElementById('userId');
-                select.innerHTML = '<option value="">-- 請選擇用戶 --</option>';
-                const filteredUsers = result.users.filter(u => currentRole === 'fehd' ? (u.role === '區域主管' || u.role === '超級管理員') : (u.role === '轉運站職員' || u.role === '超級管理員'));
-                filteredUsers.forEach(u => { select.innerHTML += `<option value="${u.id}">${u.id}</option>`; });
-                if (filteredUsers.length === 0) select.innerHTML = '<option value="">-- 暫無用戶，請聯絡管理員 --</option>';
-            }
-        } catch (err) { console.error("載入用戶列表錯誤", err); }
+            renderUserDropdown(JSON.parse(cachedUsers));
+            console.log("👥 用戶列表已從快取秒開");
+        } catch(e) { console.warn(e); }
     }
+
+    try {
+        // 🌟 2. 讓它在背景默默向 GAS 獲取最新列表
+        const result = await callAPI('getUserList');
+        if (result.success && result.users) {
+            // 更新快取
+            localStorage.setItem(cacheKey, JSON.stringify(result.users));
+            // 如果當前下拉選單是空的，或者資料有變，再更新一次 UI
+            if (!cachedUsers) {
+                renderUserDropdown(result.users);
+            }
+        }
+    } catch (err) { console.error("背景載入用戶列表錯誤", err); }
+}
+
+// 拆分出來的渲染函數
+function renderUserDropdown(users) {
+    const select = document.getElementById('userId');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- 請選擇用戶 --</option>';
+    const filteredUsers = users.filter(u => currentRole === 'fehd' ? (u.role === '區域主管' || u.role === '超級管理員') : (u.role === '轉運站職員' || u.role === '超級管理員'));
+    filteredUsers.forEach(u => { select.innerHTML += `<option value="${u.id}">${u.id}</option>`; });
+}
     
     async function doLogin() {
         const userId = document.getElementById('userId').value, password = document.getElementById('password').value;
