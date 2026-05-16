@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>車輛管理系統 | 動態配額管制</title>
-    <!-- 優化1: 使用國內 CDN 鏡像加速 Bootstrap / FontAwesome / SheetJS (保留原有功能) -->
     <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- 優化2: SheetJS 改為按需加載，減少首次請求體積 (保留全部功能) -->
-    <!-- 原 XLSX 庫將在需要時動態載入，保證匯出功能正常 -->
     <style>
         :root {
             --mc-bg: #D8F0D2;
@@ -199,7 +196,6 @@
             display: none !important;
         }
         
-        /* 分頁按鈕樣式，不影響原有外觀 */
         .pagination-container {
             display: flex;
             justify-content: flex-end;
@@ -291,7 +287,7 @@
                 <h3 id="mainTitle" class="fw-bold" style="color:#2a5e3a;">🚛 車輛資料表（含凌晨配額管制）</h3>
                 <div class="d-flex gap-2 align-items-center">
                     <input type="text" id="searchInput" class="search-input" placeholder="🔍 搜尋車牌 / 區域" onkeyup="filterTable()">
-                    <button onclick="loadVehicles()" class="btn btn-sm btn-outline-success" style="border-radius: 30px;"><i class="fas fa-sync-alt"></i> 重新整理</button>
+                    <button onclick="loadVehicles(true)" class="btn btn-sm btn-outline-success" style="border-radius: 30px;"><i class="fas fa-sync-alt"></i> 重新整理</button>
                 </div>
             </div>
             
@@ -369,21 +365,16 @@
         }
     }
     
-    // ======================= 優化: 配額緩存 & 車輛數據緩存 =======================
+    // ======================= 配額數據（從 Google Sheet CSV 讀取，帶緩存）=======================
     let cachedQuotaData = null;
     let quotaCacheExpiry = null;
-    let cachedVehiclesData = null;
-    let vehiclesCacheExpiry = null;
+    let midnightQuotaMap = {};
     
     const MIDNIGHT_QUOTA_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vThKueDlAW8Zv2quZY56FWqeWApgRvLjIIXE7c0P05IT3BClyxWypRciJadO7Swu75X_9kAWDNt5vgk/pub?gid=1525879179&single=true&output=csv";
-    
-    let midnightQuotaMap = {};
-    let isQuotaLoaded = false;
     
     async function loadMidnightQuotaFromSheet(forceRefresh = false) {
         if (!forceRefresh && quotaCacheExpiry && Date.now() < quotaCacheExpiry && cachedQuotaData) {
             midnightQuotaMap = cachedQuotaData;
-            isQuotaLoaded = true;
             return true;
         }
         try {
@@ -414,8 +405,7 @@
             }
             midnightQuotaMap = quotaData;
             cachedQuotaData = quotaData;
-            quotaCacheExpiry = Date.now() + 5 * 60 * 1000; // 5分鐘緩存
-            isQuotaLoaded = true;
+            quotaCacheExpiry = Date.now() + 5 * 60 * 1000;
             return true;
         } catch (error) {
             console.error("載入凌晨配額失敗，使用預設值:", error);
@@ -430,7 +420,6 @@
             };
             cachedQuotaData = midnightQuotaMap;
             quotaCacheExpiry = Date.now() + 5 * 60 * 1000;
-            isQuotaLoaded = true;
             return false;
         }
     }
@@ -446,6 +435,7 @@
     }
     
     function hasQuotaLimit(district) { return getDistrictQuotaLimit(district) !== null; }
+    
     function countMidnightVehiclesByDistrict(district, vehiclesArray) {
         if (!district || !vehiclesArray) return 0;
         const today = new Date().toISOString().split('T')[0];
@@ -465,8 +455,85 @@
         return { allowed: true };
     }
     
+    // ======================= 分頁變數 =======================
+    let currentPage = 1;
+    let rowsPerPage = 50;
+    let currentFilteredDataForPaging = [];
+    
+    function renderPagination(totalItems, page) {
+        const totalPages = Math.ceil(totalItems / rowsPerPage);
+        const container = document.getElementById('paginationControls');
+        if (!container) return;
+        if (totalPages <= 1) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = 'flex';
+        let btnHtml = `<span class="pagination-info">共 ${totalItems} 筆</span>`;
+        btnHtml += `<button class="pagination-btn" onclick="goToPage(1)" ${page === 1 ? 'disabled style="opacity:0.5;"' : ''}>⏮ 首頁</button>`;
+        btnHtml += `<button class="pagination-btn" onclick="goToPage(${page-1})" ${page === 1 ? 'disabled style="opacity:0.5;"' : ''}>◀ 上一頁</button>`;
+        let startPage = Math.max(1, page - 2);
+        let endPage = Math.min(totalPages, page + 2);
+        for (let i = startPage; i <= endPage; i++) {
+            btnHtml += `<button class="pagination-btn ${i === page ? 'active-page' : ''}" onclick="goToPage(${i})">${i}</button>`;
+        }
+        btnHtml += `<button class="pagination-btn" onclick="goToPage(${page+1})" ${page === totalPages ? 'disabled style="opacity:0.5;"' : ''}>下一頁 ▶</button>`;
+        btnHtml += `<button class="pagination-btn" onclick="goToPage(${totalPages})" ${page === totalPages ? 'disabled style="opacity:0.5;"' : ''}>末頁 ⏭</button>`;
+        container.innerHTML = btnHtml;
+    }
+    
+    function goToPage(page) {
+        currentPage = Math.max(1, Math.min(Math.ceil(currentFilteredDataForPaging.length / rowsPerPage), page));
+        renderCurrentPageData();
+    }
+    
+    function renderCurrentPageData() {
+        const start = (currentPage - 1) * rowsPerPage;
+        const pageData = currentFilteredDataForPaging.slice(start, start + rowsPerPage);
+        const tbody = document.getElementById('vehicleList');
+        const recordSpan = document.getElementById('recordCount');
+        if(!pageData.length){ 
+            tbody.innerHTML='<tr><td colspan="10" class="text-center text-muted">暫無符合車輛</td></tr>'; 
+            if(recordSpan) recordSpan.innerText="0 筆"; 
+            renderPagination(0,1);
+            return; 
+        }
+        tbody.innerHTML = pageData.map(v => { 
+            const startDate = v.startDate ? v.startDate.split('T')[0] : '-'; 
+            const expiry = v.expiryDate ? v.expiryDate.split('T')[0] : '-'; 
+            return `<tr>
+                    <td><strong>${escapeHtml(v.plate)}</strong></td>
+                    <td>${v.pgvw}</td>
+                    <td>${startDate}</td>
+                    <td>${expiry}</td>
+                    <td>${v.vehicleDailyLimit||5}</td>
+                    <td>${v.midnight==='Y'?'✅ 是':'❌ 否'}</td>
+                    <td>${escapeHtml(v.district)}</td>
+                    <td>${v.districtDailyLimit||0}</td>
+                    <td>${escapeHtml(v.createdBy)||'-'}</td>
+                    <td>${currentRole === 'fehd' ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate.replace(/'/g, "\\'")}')">刪除</button>` : '🔍 唯讀'}</td>
+                </tr>`; 
+        }).join('');
+        if(recordSpan) recordSpan.innerText = `${currentFilteredDataForPaging.length} 筆`;
+        renderPagination(currentFilteredDataForPaging.length, currentPage);
+    }
+    
+    // ======================= 核心 API 變數 =======================
+    const API_URL = "https://script.google.com/macros/s/AKfycbz34m2X-BLPbGD45FzyTfZC_qSaBy1tlzz8rlZhMy3VBOoioLDwmadK3NWp1WXN-b_K/exec";
+    let currentSession = null;
+    let availableDistricts = [];
+    let currentRole = "fehd";
+    let vehiclesData = [];
+    let districtQuotaMap = {};
+    let sortColumn = -1;
+    let sortDirection = 'asc';
     let currentUserViewDistricts = [];
     let currentSelectedFilterDistrict = null;
+    
+    function getUrlParameter(name) { 
+        const urlParams = new URLSearchParams(window.location.search); 
+        return urlParams.get(name); 
+    }
     
     function updateMidnightQuotaPanel(vehiclesList, viewDistrictsArray) {
         const section = document.getElementById('midnightQuotaSection');
@@ -521,73 +588,48 @@
         });
     }
     
-    // ======================= 分頁變數與函數 (不影響原有功能) =======================
-    let currentPage = 1;
-    let rowsPerPage = 50;
-    let currentFilteredDataForPaging = [];
-    
-    function renderPagination(totalItems, page) {
-        const totalPages = Math.ceil(totalItems / rowsPerPage);
-        const container = document.getElementById('paginationControls');
-        if (!container) return;
-        if (totalPages <= 1) {
-            container.style.display = 'none';
-            return;
+    // ======================= 優化: 車輛數據 Stale-While-Revalidate 緩存 =======================
+    async function loadVehicles(forceRefresh = false) {
+        if (!currentSession) return;
+        
+        const cacheKey = 'vehicles_cache_' + currentSession.userId;
+        const cached = localStorage.getItem(cacheKey);
+        
+        // 1. 立即顯示緩存數據（如果有）
+        if (!forceRefresh && cached) {
+            try {
+                const cachedData = JSON.parse(cached);
+                vehiclesData = cachedData;
+                filterTable();
+                updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
+            } catch(e) { console.warn("緩存解析失敗", e); }
         }
-        container.style.display = 'flex';
-        let btnHtml = `<span class="pagination-info">共 ${totalItems} 筆</span>`;
-        btnHtml += `<button class="pagination-btn" onclick="goToPage(1)" ${page === 1 ? 'disabled style="opacity:0.5;"' : ''}>⏮ 首頁</button>`;
-        btnHtml += `<button class="pagination-btn" onclick="goToPage(${page-1})" ${page === 1 ? 'disabled style="opacity:0.5;"' : ''}>◀ 上一頁</button>`;
-        let startPage = Math.max(1, page - 2);
-        let endPage = Math.min(totalPages, page + 2);
-        for (let i = startPage; i <= endPage; i++) {
-            btnHtml += `<button class="pagination-btn ${i === page ? 'active-page' : ''}" onclick="goToPage(${i})">${i}</button>`;
+        
+        // 2. 後台靜默獲取最新數據（不顯示 loading，體驗更流暢）
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'getVehicles', session: currentSession })
+            });
+            const result = await response.json();
+            if (result.success && result.data) {
+                vehiclesData = result.data;
+                localStorage.setItem(cacheKey, JSON.stringify(vehiclesData));
+                filterTable();
+                updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
+            } else if (!cached) {
+                // 只有在沒有緩存且請求失敗時才顯示錯誤
+                document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">無法載入資料</td></tr>';
+            }
+        } catch(err) {
+            console.error("載入車輛失敗:", err);
+            if (!cached) {
+                document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
+            }
         }
-        btnHtml += `<button class="pagination-btn" onclick="goToPage(${page+1})" ${page === totalPages ? 'disabled style="opacity:0.5;"' : ''}>下一頁 ▶</button>`;
-        btnHtml += `<button class="pagination-btn" onclick="goToPage(${totalPages})" ${page === totalPages ? 'disabled style="opacity:0.5;"' : ''}>末頁 ⏭</button>`;
-        container.innerHTML = btnHtml;
     }
     
-    function goToPage(page) {
-        currentPage = Math.max(1, Math.min(Math.ceil(currentFilteredDataForPaging.length / rowsPerPage), page));
-        renderCurrentPageData();
-    }
-    
-    function renderCurrentPageData() {
-        const start = (currentPage - 1) * rowsPerPage;
-        const pageData = currentFilteredDataForPaging.slice(start, start + rowsPerPage);
-        const tbody = document.getElementById('vehicleList');
-        const recordSpan = document.getElementById('recordCount');
-        if(!pageData.length){ 
-            tbody.innerHTML='<tr><td colspan="10" class="text-center text-muted">暫無符合車輛</td></tr>'; 
-            if(recordSpan) recordSpan.innerText="0 筆"; 
-            renderPagination(0,1);
-            return; 
-        }
-        tbody.innerHTML = pageData.map(v => { 
-            const startDate = v.startDate ? v.startDate.split('T')[0] : '-'; 
-            const expiry = v.expiryDate ? v.expiryDate.split('T')[0] : '-'; 
-            return `<tr><td><strong>${escapeHtml(v.plate)}</strong></td><td>${v.pgvw}</td><td>${startDate}</td><td>${expiry}</td><td>${v.vehicleDailyLimit||5}</td><td>${v.midnight==='Y'?'✅ 是':'❌ 否'}</td><td>${escapeHtml(v.district)}</td><td>${v.districtDailyLimit||0}</td><td>${escapeHtml(v.createdBy)||'-'}</td><td>${currentRole === 'fehd' ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate.replace(/'/g, "\\'")}')">刪除</button>` : '🔍 唯讀'}</td></tr>`; 
-        }).join('');
-        if(recordSpan) recordSpan.innerText = `${currentFilteredDataForPaging.length} 筆`;
-        renderPagination(currentFilteredDataForPaging.length, currentPage);
-    }
-    
-    // ======================= 核心 API 邏輯 (保留原樣，加入緩存) =======================
-    const API_URL = "https://script.google.com/macros/s/AKfycbz34m2X-BLPbGD45FzyTfZC_qSaBy1tlzz8rlZhMy3VBOoioLDwmadK3NWp1WXN-b_K/exec";
-    let currentSession = null;
-    let availableDistricts = [];
-    let currentRole = "fehd";
-    let vehiclesData = [];
-    let districtQuotaMap = {};
-    let sortColumn = -1;
-    let sortDirection = 'asc';
-    
-    function getUrlParameter(name) { 
-        const urlParams = new URLSearchParams(window.location.search); 
-        return urlParams.get(name); 
-    }
-    
+    // ======================= 初始化與登入（優化：並行加載）=======================
     async function initByRole() {
         await loadMidnightQuotaFromSheet(false);
         let urlRole = getUrlParameter('role');
@@ -672,7 +714,11 @@
                         };
                     }
                 }
-                await loadVehicles();
+                // 優化: 並行加載配額和車輛數據
+                await Promise.all([
+                    loadDistrictQuota(),
+                    loadVehicles(false)
+                ]);
             } else { alert("登入失敗：" + result.msg); }
         } catch (err) { alert("網路錯誤：" + err); } finally { showLoading(false); }
     }
@@ -695,34 +741,6 @@
                 result.data.forEach(q => { districtQuotaMap[q.district] = q.dailyLimit; }); 
             }
         } catch(err) { console.warn(err); }
-    }
-    
-    async function loadVehicles(forceRefresh = false) {
-        if (!currentSession) return;
-        if (currentSession.userId === "WKTS" || currentSession.role === "超級管理員") currentSession.viewDistricts = "all";
-        if (!forceRefresh && vehiclesCacheExpiry && Date.now() < vehiclesCacheExpiry && cachedVehiclesData) {
-            vehiclesData = cachedVehiclesData;
-            filterTable();
-            updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
-            return;
-        }
-        showLoading(true);
-        try {
-            const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getVehicles', session: currentSession }) });
-            const result = await response.json();
-            if (result.success && result.data) { 
-                vehiclesData = result.data; 
-                cachedVehiclesData = vehiclesData;
-                vehiclesCacheExpiry = Date.now() + 60 * 1000;
-                filterTable(); 
-                updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
-            } else {
-                document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">無法載入資料</td></tr>';
-            }
-        } catch(err) { 
-            console.error(err); 
-            document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
-        } finally { showLoading(false); }
     }
     
     function sortTable(columnIndex) { 
@@ -769,6 +787,73 @@
         renderCurrentPageData();
     }
     
+    // 批次上傳 - 利用 GAS 端智能處理，前端大幅簡化
+    async function batchUpload() {
+        if (!currentSession || currentRole !== 'fehd') { alert("權限不足"); return; }
+        const file = document.getElementById('excelFile').files[0]; 
+        if (!file) { alert("請選擇 Excel 檔案"); return; }
+        showLoading(true);
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                let dataList = [];
+                for (let i = 1; i < rows.length; i++) {
+                    let row = rows[i]; 
+                    if (!row[0]) continue;
+                    let district = row[6] ? String(row[6]).trim() : "";
+                    let midnightFlag = String(row[5] || 'N').toUpperCase() === 'Y' ? 'Y' : 'N';
+                    if (district && !availableDistricts.includes(district)) { 
+                        alert(`無權限上傳區域 ${district}`); 
+                        showLoading(false);
+                        return;
+                    }
+                    dataList.push({ 
+                        plate: String(row[0]).trim().toUpperCase(), 
+                        pgvw: parseFloat(row[1]) || 0, 
+                        startDate: formatExcelDate(row[2]), 
+                        expiryDate: formatExcelDate(row[3]), 
+                        vehicleDailyLimit: parseInt(row[4]) || 5, 
+                        midnight: midnightFlag, 
+                        district: district 
+                    });
+                }
+                let validData = dataList.filter(d => d.plate && d.pgvw > 0 && d.expiryDate && d.district);
+                if (!validData.length) { alert("沒有有效的車輛資料"); showLoading(false); return; }
+                
+                // 前端配額預檢
+                let quotaErrors = [];
+                let tempCheckVehicles = [...vehiclesData];
+                for (let item of validData) {
+                    const violation = checkMidnightQuotaViolation(item.district, item.midnight, null, tempCheckVehicles);
+                    if (!violation.allowed) {
+                        quotaErrors.push(`${item.district} 凌晨配額已滿，無法新增車輛 ${item.plate}`);
+                    } else {
+                        tempCheckVehicles.push(item);
+                    }
+                }
+                if (quotaErrors.length > 0) alert("配額衝突:\n" + quotaErrors.join("\n"));
+                validData = validData.filter((_, idx) => !quotaErrors.some(e => e.includes(validData[idx].plate)));
+                if (!validData.length) { alert("沒有有效的車輛資料或配額已滿"); showLoading(false); return; }
+                
+                const resp = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'batchUpload', dataList: validData, session: currentSession }) });
+                const res = await resp.json();
+                if (res.success) { 
+                    const resultDiv = document.getElementById('batchResult'); 
+                    resultDiv.innerHTML = `<div>✅ ${res.msg}</div>`; 
+                    resultDiv.style.display = 'block'; 
+                    await loadVehicles(true); 
+                    setTimeout(() => resultDiv.style.display = 'none', 4000); 
+                } else { 
+                    alert("上傳失敗：" + res.msg); 
+                }
+            } catch(err) { alert("解析檔案失敗：" + err); } finally { showLoading(false); document.getElementById('excelFile').value = ""; }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    
     document.getElementById('vehicleForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!currentSession || currentRole !== 'fehd') { alert("您沒有權限編輯車輛"); return; }
@@ -789,57 +874,12 @@
                 document.getElementById('pgvw').value = ""; 
                 document.getElementById('vehicleDailyLimit').value = "5"; 
                 document.getElementById('expiryDate').value = ""; 
-                loadVehicles(true); 
+                await loadVehicles(true); 
             } else { 
                 alert("操作失敗：" + result.msg); 
             }
         } catch(err) { alert("網路錯誤：" + err); } finally { showLoading(false); }
     });
-    
-    async function batchUpload() {
-        if (!currentSession || currentRole !== 'fehd') { alert("權限不足"); return; }
-        const file = document.getElementById('excelFile').files[0]; 
-        if (!file) { alert("請選擇 Excel 檔案"); return; }
-        showLoading(true);
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                let dataList = [], quotaErrors = [];
-                for (let i = 1; i < rows.length; i++) {
-                    let row = rows[i]; 
-                    if (!row[0]) continue;
-                    let district = row[6] ? String(row[6]).trim() : "";
-                    let midnightFlag = String(row[5] || 'N').toUpperCase() === 'Y' ? 'Y' : 'N';
-                    if (district && !availableDistricts.includes(district)) { alert(`無權限上傳區域 ${district}`); continue; }
-                    let tempCheckVehicles = [...vehiclesData];
-                    dataList.forEach(item => { if (item.district === district && item.midnight === 'Y') tempCheckVehicles.push(item); });
-                    const violation = checkMidnightQuotaViolation(district, midnightFlag, null, tempCheckVehicles);
-                    if (!violation.allowed) quotaErrors.push(`${district} 凌晨配額已滿，無法新增車輛 ${row[0]}`);
-                    else {
-                        dataList.push({ plate: String(row[0]).trim().toUpperCase(), pgvw: parseFloat(row[1])||0, startDate: formatExcelDate(row[2]), expiryDate: formatExcelDate(row[3]), vehicleDailyLimit: parseInt(row[4])||5, midnight: midnightFlag, district });
-                    }
-                }
-                if (quotaErrors.length > 0) alert("配額衝突:\n" + quotaErrors.join("\n"));
-                let validData = dataList.filter(d => d.plate && d.pgvw > 0 && d.expiryDate && d.district);
-                if (!validData.length) { alert("沒有有效的車輛資料或配額已滿"); showLoading(false); return; }
-                const resp = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'batchUpload', dataList: validData, session: currentSession }) });
-                const res = await resp.json();
-                if (res.success) { 
-                    const resultDiv = document.getElementById('batchResult'); 
-                    resultDiv.innerHTML = `<div>✅ ${res.msg}</div>`; 
-                    resultDiv.style.display = 'block'; 
-                    loadVehicles(true); 
-                    setTimeout(() => resultDiv.style.display = 'none', 4000); 
-                } else { 
-                    alert("上傳失敗：" + res.msg); 
-                }
-            } catch(err) { alert("解析檔案失敗：" + err); } finally { showLoading(false); document.getElementById('excelFile').value = ""; }
-        };
-        reader.readAsArrayBuffer(file);
-    }
     
     function formatExcelDate(val){ 
         if(!val) return ""; 
@@ -857,7 +897,7 @@
         try{ 
             const resp=await fetch(API_URL,{method:'POST',body:JSON.stringify({action:'deleteVehicle',plate,session:currentSession})}); 
             const res=await resp.json(); 
-            if(res.success){ alert(res.msg); loadVehicles(true); } 
+            if(res.success){ alert(res.msg); await loadVehicles(true); } 
             else alert("刪除失敗："+res.msg); 
         }catch(err){ alert("網路錯誤："+err); } 
         finally{ showLoading(false); } 
@@ -896,6 +936,7 @@
         return str.replace(/[&<>]/g, m=> m==='&'?'&amp;': m==='<'?'&lt;':'&gt;'); 
     }
     
+    // 全局函數
     window.sortTable = sortTable;
     window.filterTable = filterTable;
     window.doLogin = doLogin;
