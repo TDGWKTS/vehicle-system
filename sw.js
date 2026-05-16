@@ -1,6 +1,6 @@
 ﻿// sw.js - Service Worker 车辆数据缓存
 const CACHE_NAME = 'vehicle-system-v1';
-const API_URL = 'https://script.google.com/macros/s/AKfycbzzMf-iGBT3LEwlAFSntVYA7IEmrctIMBcQfZIaZALpSkFwPExMT_W3K37ysRVtxgoUfg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzmbQ6lJJMP0pjw12qizc0iYJ37Ez82j8wbB2EaJl2WPxuHTvlY37217-PFv6aEKSFu6A/exec';
 
 self.addEventListener('install', (event) => {
   console.log('[SW] 安装中...');
