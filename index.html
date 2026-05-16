@@ -756,53 +756,79 @@ function renderUserDropdown(users) {
 }
     
     async function doLogin() {
-        const userId = document.getElementById('userId').value, password = document.getElementById('password').value;
-        if (!userId || !password) { alert("請輸入帳號及密碼"); return; }
-        showLoading(true);
-        try {
-            const result = await callAPI('login', { userId, password });
-            if (result.success) {
-                currentSession = result.session;
-                document.getElementById('loginPage').style.display = 'none';
-                document.getElementById('mainPage').style.display = 'block';
-                let roleClass = currentRole === 'fehd' ? 'role-fehd' : 'role-weighbridge';
-let roleName = currentRole === 'fehd' ? '食環署' : '環保署';
-document.getElementById('userInfo').innerHTML = `
-    <span class="d-block mb-1">👤 ${result.session.userId}</span>
-    <span class="role-tag ${roleClass} d-inline-block mt-1" style="margin-left: 0; padding: 4px 14px; font-size: 0.75rem;">
-        ${roleName}
-    </span>
-`;
-                const viewText = result.session.viewDistricts === "all" ? "所有區域" : result.session.viewDistricts.join("、");
-                document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<strong>${viewText}</strong>`;
-                currentUserViewDistricts = (result.session.viewDistricts === "all") ? "all" : result.session.viewDistricts;
-                if (currentRole === 'fehd') {
-                    if (result.session.viewDistricts === "all") availableDistricts = ["屯門", "西九龍", "沙田", "葵青", "觀塘", "元朗", "Yau Tsim", "Mong Kok", "Sham Shui Po", "Central & Western", "Kowloon City", "Wong Tai Sin", "Wan Chai", "HK, KLN & NT", "深水埗"];
-                    else availableDistricts = result.session.viewDistricts;
-                    const districtSelect = document.getElementById('district');
-                    districtSelect.innerHTML = '<option value="">請選擇</option>';
-                    availableDistricts.forEach(d => { districtSelect.innerHTML += `<option value="${d}">${d}</option>`; });
-                    await loadDistrictQuota();
-                    if (result.session.role !== "超級管理員" && result.session.district) {
-                        const userDistrict = result.session.district;
-                        districtSelect.value = userDistrict;
-                        districtSelect.disabled = true;
-                        if (districtQuotaMap[userDistrict] !== undefined) document.getElementById('districtDailyLimit').value = districtQuotaMap[userDistrict];
+    const userId = document.getElementById('userId').value, password = document.getElementById('password').value;
+    if (!userId || !password) { alert("請輸入帳號及密碼"); return; }
+    showLoading(true);
+    try {
+        const result = await callAPI('login', { userId, password });
+        if (result.success) {
+            currentSession = result.session;
+            
+            // 🌟 【優化 1】直接拆箱後端一次性打包送過來的數據，零等待、免排隊！
+            if (result.initialQuotas) {
+                districtQuotaMap = {}; 
+                result.initialQuotas.forEach(q => { districtQuotaMap[q.district] = q.dailyLimit; }); 
+            }
+            
+            // 🌟 核心車輛數據直接寫入快取並立即渲染表格
+            if (result.initialVehicles) {
+                vehiclesData = result.initialVehicles;
+                localStorage.setItem('vehicles_cache_' + currentSession.userId, JSON.stringify(vehiclesData));
+            }
+            
+            // 切換頁面顯示
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('mainPage').style.display = 'block';
+            
+            // 🌟 【優化 2】將用戶名與所屬部門完美切換為整齊的兩行排版，解決擠壓重疊問題
+            let roleClass = currentRole === 'fehd' ? 'role-fehd' : 'role-weighbridge';
+            let roleName = currentRole === 'fehd' ? '食環署' : '環保署';
+            document.getElementById('userInfo').innerHTML = `
+                <span class="d-block mb-1">👤 ${result.session.userId}</span>
+                <span class="role-tag ${roleClass} d-inline-block mt-1" style="margin-left: 0; padding: 4px 14px; font-size: 0.75rem;">
+                    ${roleName}
+                </span>
+            `;
+            
+            const viewText = result.session.viewDistricts === "all" ? "所有區域" : result.session.viewDistricts.join("、");
+            document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<strong>${viewText}</strong>`;
+            currentUserViewDistricts = (result.session.viewDistricts === "all") ? "all" : result.session.viewDistricts;
+            
+            if (currentRole === 'fehd') {
+                if (result.session.viewDistricts === "all") availableDistricts = ["屯門", "西九龍", "沙田", "葵青", "觀塘", "元朗", "Yau Tsim", "Mong Kok", "Sham Shui Po", "Central & Western", "Kowloon City", "Wong Tai Sin", "Wan Chai", "HK, KLN & NT", "深水埗"];
+                else availableDistricts = result.session.viewDistricts;
+                
+                const districtSelect = document.getElementById('district');
+                districtSelect.innerHTML = '<option value="">請選擇</option>';
+                availableDistricts.forEach(d => { districtSelect.innerHTML += `<option value="${d}">${d}</option>`; });
+                
+                if (result.session.role !== "超級管理員" && result.session.district) {
+                    const userDistrict = result.session.district;
+                    districtSelect.value = userDistrict;
+                    districtSelect.disabled = true;
+                    if (districtQuotaMap[userDistrict] !== undefined) document.getElementById('districtDailyLimit').value = districtQuotaMap[userDistrict];
+                    else document.getElementById('districtDailyLimit').value = 50;
+                } else {
+                    districtSelect.disabled = false;
+                    districtSelect.onchange = function() {
+                        const selectedDistrict = districtSelect.value;
+                        if (selectedDistrict && districtQuotaMap[selectedDistrict] !== undefined)
+                            document.getElementById('districtDailyLimit').value = districtQuotaMap[selectedDistrict];
                         else document.getElementById('districtDailyLimit').value = 50;
-                    } else {
-                        districtSelect.disabled = false;
-                        districtSelect.onchange = function() {
-                            const selectedDistrict = districtSelect.value;
-                            if (selectedDistrict && districtQuotaMap[selectedDistrict] !== undefined)
-                                document.getElementById('districtDailyLimit').value = districtQuotaMap[selectedDistrict];
-                            else document.getElementById('districtDailyLimit').value = 50;
-                        };
-                    }
+                    };
                 }
-                await loadVehicles(false);
-            } else { alert("登入失敗：" + result.msg); }
-        } catch (err) { alert("網路錯誤：" + err); } finally { showLoading(false); }
-    }
+            }
+            
+            // 🌟 立即執行前端渲染（此時已無需額外 await 呼叫 API 重新下載）
+            filterTable();
+            updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
+            
+            // 💡 為了確保資料同步，在畫面渲染完成後，讓它在背景默默非同步更新一次快取即可，完全不阻礙用戶操作
+            loadVehicles(true); 
+            
+        } else { alert("登入失敗：" + result.msg); }
+    } catch (err) { alert("網路錯誤：" + err); } finally { showLoading(false); }
+}
     
     function logout() { 
         if (currentSession) {
