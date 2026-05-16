@@ -790,15 +790,23 @@
                 <span class="role-tag ${roleClass} d-inline-block mt-1" style="margin-left: 0; padding: 4px 14px; font-size: 0.75rem;">${roleName}</span>
             `;
             
-            // ========== 6. 設定用戶可查看區域 ==========
-            if (result.session.viewDistricts === "all") {
-                currentUserViewDistricts = "all";
-                document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<strong>所有區域 (超級管理員)</strong>`;
-            } else {
-                currentUserViewDistricts = result.session.viewDistricts || [];
-                const viewText = currentUserViewDistricts.join("、");
-                document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<strong>${viewText}</strong>`;
-            }
+            // ========== 6. 設定用戶可查看區域（強制換行顯示） ==========
+if (result.session.viewDistricts === "all") {
+    currentUserViewDistricts = "all";
+    // 🔧 超級管理員：顯示所有區域，強制換行
+    document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<br><strong>所有區域 (超級管理員)</strong>`;
+    document.getElementById('viewHint').style.lineHeight = "1.5";
+} else {
+    currentUserViewDistricts = result.session.viewDistricts || [];
+    const viewText = currentUserViewDistricts.join("、");
+    // 🔧 一般用戶：顯示所屬區域，強制換行（區域名稱在下一行）
+    document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<br><strong>${viewText}</strong>`;
+    document.getElementById('viewHint').style.lineHeight = "1.5";
+}
+
+// 可選：如果區域名稱過長，允許自動換行
+document.getElementById('viewHint').style.wordWrap = "break-word";
+document.getElementById('viewHint').style.whiteSpace = "normal";
             
             // ========== 7. 設定區域下拉選單 (只顯示有配額的區域) ==========
             if (currentRole === 'fehd') {
