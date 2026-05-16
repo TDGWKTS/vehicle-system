@@ -245,7 +245,7 @@
             <div class="mb-4"><div id="userInfo" class="fw-bold mb-2">👤 用戶</div><div id="viewHint" class="small" style="color:#cfe6c2;">🔍 區域權限</div></div>
             <hr style="border-color: #427c54;">
             <div class="mt-3">
-                <button class="btn btn-sm btn-light w-100 mb-2" onclick="exportCSV()" style="border-radius: 40px; background:#eaf5e4;"><i class="fas fa-file-csv me-1"></i> 匯出 CSV</button>
+                <!-- 只保留 Excel 匯出按鈕，已移除 CSV 匯出 -->
                 <button class="btn btn-sm btn-light w-100 mb-2" onclick="exportExcel()" style="border-radius: 40px;"><i class="fas fa-file-excel me-1"></i> 匯出 Excel</button>
                 <button class="btn btn-sm btn-outline-light w-100 mt-3" onclick="logout()" style="border-radius: 40px;"><i class="fas fa-sign-out-alt me-1"></i> 登出</button>
             </div>
@@ -338,7 +338,6 @@
     }
     
     // ======================= 從 Google Sheet 讀取凌晨配額 =======================
-    // 使用您提供的 CSV 發布連結
     const MIDNIGHT_QUOTA_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vThKueDlAW8Zv2quZY56FWqeWApgRvLjIIXE7c0P05IT3BClyxWypRciJadO7Swu75X_9kAWDNt5vgk/pub?gid=1525879179&single=true&output=csv";
     
     let midnightQuotaMap = {};
@@ -361,7 +360,6 @@
                     let limit = parseInt(row[1].trim().replace(/^["']|["']$/g, ''), 10);
                     if (district && !isNaN(limit)) {
                         quotaData[district] = limit;
-                        // 自動加入常見中英文對應
                         if (district === "Sham Shui Po") { quotaData["深水埗"] = limit; quotaData["SSP"] = limit; }
                         if (district === "Mong Kok") quotaData["旺角"] = limit;
                         if (district === "Yau Tsim") { quotaData["油尖"] = limit; quotaData["油尖旺"] = limit; }
@@ -382,7 +380,6 @@
             return true;
         } catch (error) {
             console.error("載入凌晨配額失敗，使用預設值:", error);
-            // 備用預設配額
             midnightQuotaMap = {
                 "Central & Western": 5, "Mong Kok": 8, "Kowloon City": 2,
                 "Sham Shui Po": 5, "Wong Tai Sin": 1, "Yau Tsim": 4,
@@ -499,7 +496,7 @@
         });
     }
     
-    // ======================= API 及核心邏輯（保持原有功能）=======================
+    // ======================= API 及核心邏輯 =======================
     const API_URL = "https://script.google.com/macros/s/AKfycbyAzYXGpsPoXq1AA3njK_zj7ggouBa_rn-Ya8oxjunYoAsb2-PK72AgfbVpWKrWZUkemw/exec";
     let currentSession = null;
     let availableDistricts = [];
@@ -640,7 +637,7 @@
                 filterTable(); 
                 updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
             } else {
-                document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">無法載入資料</td><tr>';
+                document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">無法載入資料</td></tr>';
             }
         } catch(err) { 
             console.error(err); 
@@ -695,7 +692,7 @@
         
         const tbody = document.getElementById('vehicleList'), recordSpan = document.getElementById('recordCount');
         if(!filteredData.length){ 
-            tbody.innerHTML='<tr><td colspan="10" class="text-center text-muted">暫無符合車輛</td></table>'; 
+            tbody.innerHTML='<tr><td colspan="10" class="text-center text-muted">暫無符合車輛</td></tr>'; 
             if(recordSpan) recordSpan.innerText="0 筆"; 
             return; 
         }
@@ -812,29 +809,7 @@
         finally{ showLoading(false); } 
     }
     
-    async function exportCSV(){ 
-        if(!currentSession) return; 
-        showLoading(true); 
-        try{ 
-            const resp=await fetch(API_URL,{method:'POST',body:JSON.stringify({action:'getVehicles',session:currentSession})}); 
-            const res=await resp.json(); 
-            if(res.success && res.data.length){ 
-                let rows=[["車牌","PGVW","開始日期","有效日期","車輛每日上限","凌晨授權","區域","區域每日上限","建立者"]]; 
-                res.data.forEach(v=>{ 
-                    rows.push([v.plate, v.pgvw, v.startDate?.split('T')[0]||"", v.expiryDate?.split('T')[0]||"", v.vehicleDailyLimit||5, v.midnight==='Y'?"是":"否", v.district, v.districtDailyLimit||0, v.createdBy||""]); 
-                }); 
-                const csvContent="\uFEFF"+rows.map(r=>r.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n"); 
-                const blob=new Blob([csvContent],{type:"text/csv"}); 
-                const a=document.createElement("a"); 
-                a.href=URL.createObjectURL(blob); 
-                a.download=`車輛清單_${new Date().toISOString().split('T')[0]}.csv`; 
-                a.click(); 
-                URL.revokeObjectURL(a.href); 
-            } else { alert("無資料可匯出"); } 
-        } catch(err){ alert("匯出失敗："+err.message); } 
-        finally{ showLoading(false); } 
-    }
-    
+    // 只保留 Excel 匯出，已移除 CSV 匯出功能
     async function exportExcel(){ 
         if(!currentSession) return; 
         showLoading(true); 
@@ -866,7 +841,6 @@
     window.logout = logout;
     window.batchUpload = batchUpload;
     window.deleteVehicle = deleteVehicle;
-    window.exportCSV = exportCSV;
     window.exportExcel = exportExcel;
     window.loadVehicles = loadVehicles;
     window.switchRole = switchRole;
