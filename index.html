@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- 預先載入 XLSX 庫（使用可靠的 CDN）-->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.20.2/xlsx.full.min.js"></script>
     <style>
         :root {
             --mc-bg: #D8F0D2;
@@ -832,10 +832,21 @@
     async function batchUpload() {
         if (!currentSession || currentRole !== 'fehd') { alert("權限不足"); return; }
         
-        // 檢查 XLSX 庫是否已加載
+        // 🌟 自我修復檢查：如果頭部載入失敗，動態注入正確的庫
         if (typeof XLSX === 'undefined') {
-            alert("Excel 處理庫尚未載入，請稍後再試或刷新頁面");
-            return;
+            showLoading(true);
+            const loaded = await new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.20.2/xlsx.full.min.js';
+                script.onload = () => resolve(true);
+                script.onerror = () => resolve(false);
+                document.head.appendChild(script);
+            });
+            showLoading(false);
+            if (!loaded || typeof XLSX === 'undefined') {
+                alert("Excel 處理庫載入失敗，請檢查網路連線或刷新頁面。");
+                return;
+            }
         }
         
         const file = document.getElementById('excelFile').files[0]; 
@@ -943,10 +954,21 @@
     
     async function exportExcel() {
         if (typeof XLSX === 'undefined') {
-            alert("Excel 處理庫尚未載入，請稍後再試或刷新頁面");
-            return;
+            showLoading(true);
+            const loaded = await new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.20.2/xlsx.full.min.js';
+                script.onload = () => resolve(true);
+                script.onerror = () => resolve(false);
+                document.head.appendChild(script);
+            });
+            showLoading(false);
+            if (!loaded || typeof XLSX === 'undefined') {
+                alert("Excel 處理庫載入失敗，無法匯出。");
+                return;
+            }
         }
-        if(!currentSession) return; 
+        if(!currentSession) return;
         showLoading(true); 
         try{ 
             const result = await callAPI('getVehicles', { session: currentSession });
