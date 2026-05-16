@@ -325,7 +325,7 @@
             
             <div id="midnightQuotaSection" class="card-custom card">
                 <div class="card-header-custom d-flex justify-content-between align-items-center">
-                    <span>🌙 各區凌晨授權車輛配額現況（點擊區域篩選車輛）</span>
+                    <span>🌙 各區凌晨授權車輛配額現況</span>
                     <button onclick="toggleMidnightTop()" 
                             id="midnightTopBtn"
                             class="btn btn-sm btn-success" 
@@ -430,7 +430,7 @@
     // ======================= 配額數據 =======================
     let midnightQuotaMap = {};
     let quotaCacheExpiry = null;
-    let midnightQuotaDistrictsList = []; // 儲存所有有配額的區域
+    let midnightQuotaDistrictsList = [];
     const MIDNIGHT_QUOTA_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vThKueDlAW8Zv2quZY56FWqeWApgRvLjIIXE7c0P05IT3BClyxWypRciJadO7Swu75X_9kAWDNt5vgk/pub?gid=1525879179&single=true&output=csv";
     
     async function loadMidnightQuotaFromSheet(forceRefresh = false) {
@@ -479,7 +479,6 @@
         return null;
     }
     
-    // 檢查區域是否在配額表中（只有配額表中的區域才能設定凌晨車輛）
     function isDistrictInQuotaTable(district) {
         if (!district) return false;
         const std = standardizeDistrict(district);
@@ -489,7 +488,6 @@
     function checkMidnightQuotaViolation(district, setMidnightY, excludePlate, allVehicles) {
         if (setMidnightY !== 'Y') return { allowed: true };
         
-        // 新增檢查：只有配額表中的區域才能設定凌晨車輛
         if (!isDistrictInQuotaTable(district)) {
             return { allowed: false, message: `❌ 區域「${district}」不在凌晨配額管制範圍內，無法設定為凌晨授權車輛` };
         }
@@ -602,7 +600,22 @@
         }
         const today = new Date().toISOString().split('T')[0];
         const activeVehicles = vehiclesList.filter(v => (v.expiryDate?.split('T')[0] || '') >= today);
-        let allowedDistricts = [...midnightQuotaDistrictsList];
+        
+        // 決定要顯示哪些區域：根據用戶權限過濾
+        let allowedDistricts = [];
+        if (viewDistrictsArray === 'all') {
+            // 超級管理員：顯示所有有配額設定的區域
+            allowedDistricts = [...midnightQuotaDistrictsList];
+        } else if (Array.isArray(viewDistrictsArray) && viewDistrictsArray.length > 0) {
+            // 一般用戶：只顯示其權限範圍內且有配額設定的區域
+            allowedDistricts = viewDistrictsArray.filter(district => {
+                const stdDistrict = standardizeDistrict(district);
+                return midnightQuotaMap[stdDistrict] !== undefined;
+            });
+        }
+        
+        // 去重並標準化
+        allowedDistricts = [...new Set(allowedDistricts.map(d => standardizeDistrict(d)))];
         
         if (allowedDistricts.length === 0) {
             section.classList.add('hidden-section');
@@ -610,6 +623,7 @@
         } else {
             section.classList.remove('hidden-section');
         }
+        
         let html = '<div class="row row-cols-2 row-cols-md-4 g-2">';
         for (const district of allowedDistricts) {
             const limit = getDistrictQuotaLimit(district);
@@ -622,6 +636,7 @@
         }
         html += '</div>';
         container.innerHTML = html;
+        
         document.querySelectorAll('.quota-card').forEach(card => {
             card.addEventListener('click', (e) => {
                 const district = card.getAttribute('data-district');
@@ -775,7 +790,6 @@
         document.getElementById('mainPage').style.display = 'none'; 
         document.getElementById('password').value = ""; 
         document.getElementById('userId').value = ""; 
-        // 確保登入容器保持居中顯示
         const loginPage = document.getElementById('loginPage');
         loginPage.style.display = 'flex';
         loginPage.style.justifyContent = 'center';
