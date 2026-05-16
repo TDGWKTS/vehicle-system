@@ -601,20 +601,16 @@
         const today = new Date().toISOString().split('T')[0];
         const activeVehicles = vehiclesList.filter(v => (v.expiryDate?.split('T')[0] || '') >= today);
         
-        // 決定要顯示哪些區域：根據用戶權限過濾
         let allowedDistricts = [];
         if (viewDistrictsArray === 'all') {
-            // 超級管理員：顯示所有有配額設定的區域
             allowedDistricts = [...midnightQuotaDistrictsList];
         } else if (Array.isArray(viewDistrictsArray) && viewDistrictsArray.length > 0) {
-            // 一般用戶：只顯示其權限範圍內且有配額設定的區域
             allowedDistricts = viewDistrictsArray.filter(district => {
                 const stdDistrict = standardizeDistrict(district);
                 return midnightQuotaMap[stdDistrict] !== undefined;
             });
         }
         
-        // 去重並標準化
         allowedDistricts = [...new Set(allowedDistricts.map(d => standardizeDistrict(d)))];
         
         if (allowedDistricts.length === 0) {
@@ -742,45 +738,104 @@
         filteredUsers.forEach(u => { select.innerHTML += `<option value="${u.id}">${u.id}</option>`; });
     }
     
+    // ======================= 核心登入函數 (完整修復版) =======================
     async function doLogin() {
-        const userId = document.getElementById('userId').value, password = document.getElementById('password').value;
-        if (!userId || !password) { alert("請輸入帳號及密碼"); return; }
+        const userId = document.getElementById('userId').value;
+        const password = document.getElementById('password').value;
+        
+        if (!userId || !password) { 
+            alert("請輸入帳號及密碼"); 
+            return; 
+        }
+        
         showLoading(true);
+        
         try {
             const result = await callAPI('login', { userId, password });
-            if (result.success) {
-                currentSession = result.session;
-                if (result.initialVehicles) {
-                    vehiclesData = result.initialVehicles;
-                    localStorage.setItem('vehicles_cache_' + currentSession.userId, JSON.stringify(vehiclesData));
-                }
-                document.getElementById('loginPage').style.display = 'none';
-                document.getElementById('mainPage').style.display = 'block';
-                
-                let roleClass = currentRole === 'fehd' ? 'role-fehd' : 'role-weighbridge';
-                let roleName = currentRole === 'fehd' ? '食環署' : '環保署';
-                document.getElementById('userInfo').innerHTML = `
-                    <span class="d-block mb-1">👤 ${result.session.userId}</span>
-                    <span class="role-tag ${roleClass} d-inline-block mt-1" style="margin-left: 0; padding: 4px 14px; font-size: 0.75rem;">${roleName}</span>
-                `;
-                const viewText = result.session.viewDistricts === "all" ? "所有區域" : result.session.viewDistricts.join("、");
+            
+            if (!result.success) {
+                alert("登入失敗：" + result.msg);
+                showLoading(false);
+                return;
+            }
+            
+            // ========== 1. 保存 Session ==========
+            currentSession = result.session;
+            
+            // ========== 2. 🔧 關鍵修復：確保超級管理員可查看所有區域 ==========
+            if (result.session.role === '超級管理員') {
+                result.session.viewDistricts = "all";
+                console.log("✅ 超級管理員模式啟用：可查看所有區域車輛");
+            }
+            
+            // ========== 3. 保存車輛資料到快取 ==========
+            if (result.initialVehicles && result.initialVehicles.length > 0) {
+                vehiclesData = result.initialVehicles;
+                localStorage.setItem('vehicles_cache_' + currentSession.userId, JSON.stringify(vehiclesData));
+                console.log(`📊 成功載入 ${vehiclesData.length} 筆車輛資料`);
+            } else {
+                vehiclesData = [];
+                console.warn("⚠️ 沒有載入到任何車輛資料，請檢查 Google Sheets 是否有資料");
+            }
+            
+            // ========== 4. 切換畫面 ==========
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('mainPage').style.display = 'block';
+            
+            // ========== 5. 顯示用戶資訊 ==========
+            let roleClass = currentRole === 'fehd' ? 'role-fehd' : 'role-weighbridge';
+            let roleName = currentRole === 'fehd' ? '食環署' : '環保署';
+            document.getElementById('userInfo').innerHTML = `
+                <span class="d-block mb-1">👤 ${result.session.userId}</span>
+                <span class="role-tag ${roleClass} d-inline-block mt-1" style="margin-left: 0; padding: 4px 14px; font-size: 0.75rem;">${roleName}</span>
+            `;
+            
+            // ========== 6. 設定用戶可查看區域 ==========
+            if (result.session.viewDistricts === "all") {
+                currentUserViewDistricts = "all";
+                document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<strong>所有區域 (超級管理員)</strong>`;
+            } else {
+                currentUserViewDistricts = result.session.viewDistricts || [];
+                const viewText = currentUserViewDistricts.join("、");
                 document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<strong>${viewText}</strong>`;
-                currentUserViewDistricts = (result.session.viewDistricts === "all") ? "all" : result.session.viewDistricts;
-                
-                if (currentRole === 'fehd') {
-                    // 區域下拉選單只顯示有配額設定的區域
-                    const quotaDistricts = midnightQuotaDistrictsList;
-                    const districtSelect = document.getElementById('district');
+            }
+            
+            // ========== 7. 設定區域下拉選單 (只顯示有配額的區域) ==========
+            if (currentRole === 'fehd') {
+                const quotaDistricts = midnightQuotaDistrictsList;
+                const districtSelect = document.getElementById('district');
+                if (districtSelect) {
                     districtSelect.innerHTML = '<option value="">請選擇</option>';
                     quotaDistricts.forEach(d => { 
                         districtSelect.innerHTML += `<option value="${d}">${d}</option>`; 
                     });
                 }
-                filterTable();
-                updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
-                loadVehicles(true);
-            } else { alert("登入失敗：" + result.msg); }
-        } catch (err) { alert("網路錯誤：" + err); } finally { showLoading(false); }
+            }
+            
+            // ========== 8. 渲染表格和配額面板 ==========
+            filterTable();
+            updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
+            
+            // ========== 9. 背景更新最新資料 ==========
+            loadVehicles(true);
+            
+            // ========== 10. 偵錯日誌 (幫助排查問題) ==========
+            console.log("=== 登入完成 ===");
+            console.log("用戶:", userId);
+            console.log("角色:", result.session.role);
+            console.log("可查看區域:", currentUserViewDistricts);
+            console.log("車輛資料筆數:", vehiclesData.length);
+            
+            if (vehiclesData.length === 0) {
+                console.warn("⚠️ 警告：車輛資料為 0 筆！請檢查 Google Sheets 是否有資料，或 API 是否正確回傳。");
+            }
+            
+        } catch (err) { 
+            alert("網路錯誤：" + err); 
+            console.error("登入錯誤:", err);
+        } finally { 
+            showLoading(false); 
+        }
     }
     
     function logout() { 
@@ -819,6 +874,20 @@
         const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || ''; 
         let filteredData = [...vehiclesData];
         
+        // 🔧 根據用戶權限過濾車輛（超級管理員顯示全部）
+        if (currentUserViewDistricts !== 'all' && Array.isArray(currentUserViewDistricts) && currentUserViewDistricts.length > 0) {
+            filteredData = filteredData.filter(v => {
+                const stdVehicleDistrict = standardizeDistrict(v.district);
+                return currentUserViewDistricts.some(userDistrict => 
+                    standardizeDistrict(userDistrict) === stdVehicleDistrict
+                );
+            });
+        } else if (currentUserViewDistricts === 'all') {
+            // 超級管理員：顯示所有車輛，不做過濾
+            console.log("👑 超級管理員：顯示所有區域車輛");
+        }
+        
+        // 搜尋過濾
         if (searchTerm) {
             filteredData = filteredData.filter(v => 
                 (v.plate && v.plate.toLowerCase().includes(searchTerm)) || 
@@ -827,6 +896,7 @@
             );
         }
         
+        // 排序邏輯
         if (isMidnightTopActive && filteredData.length) {
             filteredData.sort((a, b) => {
                 const valA = (a.midnight === 'Y') ? 1 : 0;
