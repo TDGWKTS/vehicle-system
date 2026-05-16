@@ -360,6 +360,18 @@
 <div id="loadingOverlay" class="loading-overlay"><div class="spinner-border" role="status"></div></div>
 
 <script>
+    // ======================= 1. 全域變數定義（集中管理） =======================
+    let currentSession = null;
+    let availableDistricts = [];
+    let currentRole = "fehd";
+    let vehiclesData = [];
+    let districtQuotaMap = {};
+    let sortColumn = -1;
+    let sortDirection = 'asc';
+    let currentUserViewDistricts = [];
+    let currentSelectedFilterDistrict = null;
+    let isMidnightTopActive = false; // 🌙 凌晨車輛置頂狀態控制
+
     // ======================= 全港區域對照表（標準化字典） =======================
     const DISTRICT_DICTIONARY = {
         // 港島區
@@ -392,30 +404,16 @@
         "hk, kln & n.t.": "HK, KLN & NT", "hk, kln & nt": "HK, KLN & NT", "全港": "HK, KLN & NT", "香港九龍新界": "HK, KLN & NT"
     };
 
-    // 標準化函數：輸入任何名稱，輸出標準英文全稱
+    // 標準化函數
     function standardizeDistrict(districtName) {
         if (!districtName) return "";
         const key = String(districtName).trim().toLowerCase().replace(/\s+/g, ' ');
         return DISTRICT_DICTIONARY[key] || districtName;
     }
 
-    // ======================= Service Worker 暫時禁用 =======================
-    /*
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js').then(registration => {
-                console.log('[SW] 註冊成功');
-            }).catch(error => {
-                console.log('[SW] 註冊失敗:', error);
-            });
-        });
-    }
-    */
-    
-    // ======================= API 網址 =======================
+    // ======================= API 網址與調用 =======================
     const API_URL = "https://script.google.com/macros/s/AKfycbzmbQ6lJJMP0pjw12qizc0iYJ37Ez82j8wbB2EaJl2WPxuHTvlY37217-PFv6aEKSFu6A/exec";
     
-    // ======================= 統一的 API 調用函數 =======================
     async function callAPI(action, extraData = {}) {
         const payload = JSON.stringify({ action, ...extraData });
         const response = await fetch(API_URL, {
@@ -425,7 +423,7 @@
         return await response.json();
     }
     
-    // ======================= 角色切換 =======================
+    // ======================= 角色與選單 =======================
     function switchRole(role) {
         window.location.href = window.location.pathname + '?role=' + role;
     }
@@ -438,10 +436,8 @@
     }
     
     // ======================= 配額數據（從 Google Sheet CSV 讀取） =======================
-    let midnightQuotaMap = {};
-    let quotaCacheExpiry = null;
-    
     const MIDNIGHT_QUOTA_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vThKueDlAW8Zv2quZY56FWqeWApgRvLjIIXE7c0P05IT3BClyxWypRciJadO7Swu75X_9kAWDNt5vgk/pub?gid=1525879179&single=true&output=csv";
+    let quotaCacheExpiry = null;
     
     async function loadMidnightQuotaFromSheet(forceRefresh = false) {
         if (!forceRefresh && quotaCacheExpiry && Date.now() < quotaCacheExpiry && Object.keys(midnightQuotaMap).length > 0) {
@@ -594,22 +590,7 @@
         renderPagination(currentFilteredDataForPaging.length, currentPage);
     }
     
-    // ======================= 核心變數 =======================
-    let currentSession = null;
-    let availableDistricts = [];
-    let currentRole = "fehd";
-    let vehiclesData = [];
-    let districtQuotaMap = {};
-    let sortColumn = -1;
-    let sortDirection = 'asc';
-    let currentUserViewDistricts = [];
-    let currentSelectedFilterDistrict = null;
-    
-    function getUrlParameter(name) { 
-        const urlParams = new URLSearchParams(window.location.search); 
-        return urlParams.get(name); 
-    }
-    
+    // ======================= 配額面板更新 =======================
     function updateMidnightQuotaPanel(vehiclesList, viewDistrictsArray) {
         const section = document.getElementById('midnightQuotaSection');
         const container = document.getElementById('midnightQuotaSummary');
@@ -663,6 +644,7 @@
         });
     }
     
+    // ======================= 載入車輛數據 =======================
     async function loadVehicles(forceRefresh = false) {
         if (!currentSession) return;
         
@@ -696,6 +678,7 @@
         }
     }
     
+    // ======================= 初始化頁面 =======================
     async function initByRole() {
         await loadMidnightQuotaFromSheet(false);
         let urlRole = getUrlParameter('role');
@@ -727,114 +710,89 @@
     }
     
     async function loadUserList() {
-    const cacheKey = 'system_users_cache';
-    const cachedUsers = localStorage.getItem(cacheKey);
-    
-    // 🌟 1. 如果瀏覽器有快取，立刻渲染，Dropdown 達成 0 秒開！
-    if (cachedUsers) {
         try {
-            renderUserDropdown(JSON.parse(cachedUsers));
-            console.log("👥 用戶列表已從快取秒開");
-        } catch(e) { console.warn(e); }
+            const result = await callAPI('getUserList');
+            if (result.success && result.users) {
+                const select = document.getElementById('userId');
+                select.innerHTML = '<option value="">-- 請選擇用戶 --</option>';
+                const filteredUsers = result.users.filter(u => currentRole === 'fehd' ? (u.role === '區域主管' || u.role === '超級管理員') : (u.role === '轉運站職員' || u.role === '超級管理員'));
+                filteredUsers.forEach(u => { select.innerHTML += `<option value="${u.id}">${u.id}</option>`; });
+                if (filteredUsers.length === 0) select.innerHTML = '<option value="">-- 暫無用戶，請聯絡管理員 --</option>';
+            }
+        } catch (err) { console.error("載入用戶列表錯誤", err); }
     }
-
-    try {
-        // 🌟 2. 讓它在背景默默向 GAS 獲取最新列表
-        const result = await callAPI('getUserList');
-        if (result.success && result.users) {
-            // 更新快取
-            localStorage.setItem(cacheKey, JSON.stringify(result.users));
-            // 如果當前下拉選單是空的，或者資料有變，再更新一次 UI
-            if (!cachedUsers) {
-                renderUserDropdown(result.users);
-            }
-        }
-    } catch (err) { console.error("背景載入用戶列表錯誤", err); }
-}
-
-// 拆分出來的渲染函數
-function renderUserDropdown(users) {
-    const select = document.getElementById('userId');
-    if (!select) return;
-    select.innerHTML = '<option value="">-- 請選擇用戶 --</option>';
-    const filteredUsers = users.filter(u => currentRole === 'fehd' ? (u.role === '區域主管' || u.role === '超級管理員') : (u.role === '轉運站職員' || u.role === '超級管理員'));
-    filteredUsers.forEach(u => { select.innerHTML += `<option value="${u.id}">${u.id}</option>`; });
-}
     
+    // ======================= 登入程序（智慧拆箱） =======================
     async function doLogin() {
-    const userId = document.getElementById('userId').value, password = document.getElementById('password').value;
-    if (!userId || !password) { alert("請輸入帳號及密碼"); return; }
-    showLoading(true);
-    try {
-        const result = await callAPI('login', { userId, password });
-        if (result.success) {
-            currentSession = result.session;
-            
-            // 🌟 【優化 1】直接拆箱後端一次性打包送過來的數據，零等待、免排隊！
-            if (result.initialQuotas) {
-                districtQuotaMap = {}; 
-                result.initialQuotas.forEach(q => { districtQuotaMap[q.district] = q.dailyLimit; }); 
-            }
-            
-            // 🌟 核心車輛數據直接寫入快取並立即渲染表格
-            if (result.initialVehicles) {
-                vehiclesData = result.initialVehicles;
-                localStorage.setItem('vehicles_cache_' + currentSession.userId, JSON.stringify(vehiclesData));
-            }
-            
-            // 切換頁面顯示
-            document.getElementById('loginPage').style.display = 'none';
-            document.getElementById('mainPage').style.display = 'block';
-            
-            // 🌟 【優化 2】將用戶名與所屬部門完美切換為整齊的兩行排版，解決擠壓重疊問題
-            let roleClass = currentRole === 'fehd' ? 'role-fehd' : 'role-weighbridge';
-            let roleName = currentRole === 'fehd' ? '食環署' : '環保署';
-            document.getElementById('userInfo').innerHTML = `
-                <span class="d-block mb-1">👤 ${result.session.userId}</span>
-                <span class="role-tag ${roleClass} d-inline-block mt-1" style="margin-left: 0; padding: 4px 14px; font-size: 0.75rem;">
-                    ${roleName}
-                </span>
-            `;
-            
-            const viewText = result.session.viewDistricts === "all" ? "所有區域" : result.session.viewDistricts.join("、");
-            document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<strong>${viewText}</strong>`;
-            currentUserViewDistricts = (result.session.viewDistricts === "all") ? "all" : result.session.viewDistricts;
-            
-            if (currentRole === 'fehd') {
-                if (result.session.viewDistricts === "all") availableDistricts = ["屯門", "西九龍", "沙田", "葵青", "觀塘", "元朗", "Yau Tsim", "Mong Kok", "Sham Shui Po", "Central & Western", "Kowloon City", "Wong Tai Sin", "Wan Chai", "HK, KLN & NT", "深水埗"];
-                else availableDistricts = result.session.viewDistricts;
+        const userId = document.getElementById('userId').value, password = document.getElementById('password').value;
+        if (!userId || !password) { alert("請輸入帳號及密碼"); return; }
+        showLoading(true);
+        try {
+            const result = await callAPI('login', { userId, password });
+            if (result.success) {
+                currentSession = result.session;
                 
-                const districtSelect = document.getElementById('district');
-                districtSelect.innerHTML = '<option value="">請選擇</option>';
-                availableDistricts.forEach(d => { districtSelect.innerHTML += `<option value="${d}">${d}</option>`; });
-                
-                if (result.session.role !== "超級管理員" && result.session.district) {
-                    const userDistrict = result.session.district;
-                    districtSelect.value = userDistrict;
-                    districtSelect.disabled = true;
-                    if (districtQuotaMap[userDistrict] !== undefined) document.getElementById('districtDailyLimit').value = districtQuotaMap[userDistrict];
-                    else document.getElementById('districtDailyLimit').value = 50;
-                } else {
-                    districtSelect.disabled = false;
-                    districtSelect.onchange = function() {
-                        const selectedDistrict = districtSelect.value;
-                        if (selectedDistrict && districtQuotaMap[selectedDistrict] !== undefined)
-                            document.getElementById('districtDailyLimit').value = districtQuotaMap[selectedDistrict];
-                        else document.getElementById('districtDailyLimit').value = 50;
-                    };
+                if (result.initialQuotas) {
+                    districtQuotaMap = {}; 
+                    result.initialQuotas.forEach(q => { districtQuotaMap[q.district] = q.dailyLimit; }); 
                 }
-            }
-            
-            // 🌟 立即執行前端渲染（此時已無需額外 await 呼叫 API 重新下載）
-            filterTable();
-            updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
-            
-            // 💡 為了確保資料同步，在畫面渲染完成後，讓它在背景默默非同步更新一次快取即可，完全不阻礙用戶操作
-            loadVehicles(true); 
-            
-        } else { alert("登入失敗：" + result.msg); }
-    } catch (err) { alert("網路錯誤：" + err); } finally { showLoading(false); }
-}
+                
+                if (result.initialVehicles) {
+                    vehiclesData = result.initialVehicles;
+                    localStorage.setItem('vehicles_cache_' + currentSession.userId, JSON.stringify(vehiclesData));
+                }
+                
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('mainPage').style.display = 'block';
+                
+                let roleClass = currentRole === 'fehd' ? 'role-fehd' : 'role-weighbridge';
+                let roleName = currentRole === 'fehd' ? '食環署' : '環保署';
+                document.getElementById('userInfo').innerHTML = `
+                    <span class="d-block mb-1">👤 ${result.session.userId}</span>
+                    <span class="role-tag ${roleClass} d-inline-block mt-1" style="margin-left: 0; padding: 4px 14px; font-size: 0.75rem;">
+                        ${roleName}
+                    </span>
+                `;
+                
+                const viewText = result.session.viewDistricts === "all" ? "所有區域" : result.session.viewDistricts.join("、");
+                document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<strong>${viewText}</strong>`;
+                currentUserViewDistricts = (result.session.viewDistricts === "all") ? "all" : result.session.viewDistricts;
+                
+                if (currentRole === 'fehd') {
+                    if (result.session.viewDistricts === "all") availableDistricts = ["屯門", "西九龍", "沙田", "葵青", "觀塘", "元朗", "Yau Tsim", "Mong Kok", "Sham Shui Po", "Central & Western", "Kowloon City", "Wong Tai Sin", "Wan Chai", "HK, KLN & NT", "深水埗"];
+                    else availableDistricts = result.session.viewDistricts;
+                    
+                    const districtSelect = document.getElementById('district');
+                    districtSelect.innerHTML = '<option value="">請選擇</option>';
+                    availableDistricts.forEach(d => { districtSelect.innerHTML += `<option value="${d}">${d}</option>`; });
+                    
+                    if (result.session.role !== "超級管理員" && result.session.district) {
+                        const userDistrict = result.session.district;
+                        districtSelect.value = userDistrict;
+                        districtSelect.disabled = true;
+                        if (districtQuotaMap[userDistrict] !== undefined) document.getElementById('districtDailyLimit').value = districtQuotaMap[userDistrict];
+                        else document.getElementById('districtDailyLimit').value = 50;
+                    } else {
+                        districtSelect.disabled = false;
+                        districtSelect.onchange = function() {
+                            const selectedDistrict = districtSelect.value;
+                            if (selectedDistrict && districtQuotaMap[selectedDistrict] !== undefined)
+                                document.getElementById('districtDailyLimit').value = districtQuotaMap[selectedDistrict];
+                            else document.getElementById('districtDailyLimit').value = 50;
+                        };
+                    }
+                }
+                
+                // 立即渲染畫面（零延遲）
+                filterTable();
+                updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
+                
+                // 背景靜默刷新
+                loadVehicles(true); 
+                
+            } else { alert("登入失敗：" + result.msg); }
+        } catch (err) { alert("網路錯誤：" + err); } finally { showLoading(false); }
+    }
     
     function logout() { 
         if (currentSession) {
@@ -864,81 +822,75 @@ function renderUserDropdown(users) {
         filterTable(); 
     }
     
-   function filterTable() { 
-    const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || ''; 
-    let filteredData = [...vehiclesData];
-    
-    // 1. 關鍵字關鍵字搜尋過濾
-    if (searchTerm) {
-        filteredData = filteredData.filter(v => 
-            (v.plate && v.plate.toLowerCase().includes(searchTerm)) || 
-            (v.district && v.district.toLowerCase().includes(searchTerm)) || 
-            (v.createdBy && v.createdBy.toLowerCase().includes(searchTerm))
-        );
+    // ======================= 關鍵核心：包含「凌晨車輛置頂」的篩選排序邏輯 =======================
+    function filterTable() { 
+        const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || ''; 
+        let filteredData = [...vehiclesData];
+        
+        if (searchTerm) {
+            filteredData = filteredData.filter(v => 
+                (v.plate && v.plate.toLowerCase().includes(searchTerm)) || 
+                (v.district && v.district.toLowerCase().includes(searchTerm)) || 
+                (v.createdBy && v.createdBy.toLowerCase().includes(searchTerm))
+            );
+        }
+        
+        // 欄位基礎排序
+        if (sortColumn !== -1 && filteredData.length) {
+            filteredData.sort((a,b) => {
+                let valA, valB;
+                switch(sortColumn){ 
+                    case 0: valA = a.plate||''; valB = b.plate||''; break; 
+                    case 1: valA = Number(a.pgvw)||0; valB = Number(b.pgvw)||0; break; 
+                    case 2: valA = a.startDate||''; valB = b.startDate||''; break; 
+                    case 3: valA = a.expiryDate||''; valB = b.expiryDate||''; break; 
+                    case 4: valA = Number(a.vehicleDailyLimit)||0; valB = Number(b.vehicleDailyLimit)||0; break; 
+                    case 5: valA = a.midnight||'N'; valB = b.midnight||'N'; break; 
+                    case 6: valA = a.district||''; valB = b.district||''; break; 
+                    case 7: valA = Number(a.districtDailyLimit)||0; valB = Number(b.districtDailyLimit)||0; break; 
+                    case 8: valA = a.createdBy||''; valB = b.createdBy||''; break; 
+                    default: valA=''; valB=''; 
+                }
+                if(sortColumn === 1||sortColumn===4||sortColumn===7) return sortDirection==='asc' ? valA-valB : valB-valA;
+                if(typeof valA ==='string') valA = valA.toLowerCase();
+                if(typeof valB ==='string') valB = valB.toLowerCase();
+                if(valA<valB) return sortDirection==='asc'?-1:1; 
+                if(valA>valB) return sortDirection==='asc'?1:-1; 
+                return 0;
+            });
+        }
+        
+        // 🌟 重點：如果啟用了置頂，強行把凌晨車輛 (Y) 堆到最前面，同時保持原有的基礎排序
+        if (isMidnightTopActive && filteredData.length) {
+            filteredData.sort((a, b) => {
+                const valA = (a.midnight === 'Y') ? 1 : 0;
+                const valB = (b.midnight === 'Y') ? 1 : 0;
+                return valB - valA; 
+            });
+        }
+        
+        currentFilteredDataForPaging = filteredData;
+        currentPage = 1;
+        renderCurrentPageData();
     }
     
-    // 2. 執行欄位排序 (點擊表頭的 ⬍ 排序)
-    if (sortColumn !== -1 && filteredData.length) {
-        filteredData.sort((a,b) => {
-            let valA, valB;
-            switch(sortColumn){ 
-                case 0: valA = a.plate||''; valB = b.plate||''; break; 
-                case 1: valA = Number(a.pgvw)||0; valB = Number(b.pgvw)||0; break; 
-                case 2: valA = a.startDate||''; valB = b.startDate||''; break; 
-                case 3: valA = a.expiryDate||''; valB = b.expiryDate||''; break; 
-                case 4: valA = Number(a.vehicleDailyLimit)||0; valB = Number(b.vehicleDailyLimit)||0; break; 
-                case 5: valA = a.midnight||'N'; valB = b.midnight||'N'; break; 
-                case 6: valA = a.district||''; valB = b.district||''; break; 
-                case 7: valA = Number(a.districtDailyLimit)||0; valB = Number(b.districtDailyLimit)||0; break; 
-                case 8: valA = a.createdBy||''; valB = b.createdBy||''; break; 
-                default: valA=''; valB=''; 
-            }
-            if(sortColumn === 1||sortColumn===4||sortColumn===7) return sortDirection==='asc' ? valA-valB : valB-valA;
-            if(typeof valA ==='string') valA = valA.toLowerCase();
-            if(typeof valB ==='string') valB = valB.toLowerCase();
-            if(valA<valB) return sortDirection==='asc'?-1:1;
-            if(valA>valB) return sortDirection==='asc'?1:-1;
-            return 0;
-        });
+    // 🌟 切換凌晨車輛置頂狀態的控制函數
+    function toggleMidnightTop() {
+        isMidnightTopActive = !isMidnightTopActive;
+        const btn = document.getElementById('midnightTopBtn');
+        if (!btn) return;
+        
+        if (isMidnightTopActive) {
+            btn.innerHTML = `<i class="fas fa-sun me-1"></i> 取消置頂`;
+            btn.style.backgroundColor = "#e67e22"; 
+        } else {
+            btn.innerHTML = `<i class="fas fa-moon me-1"></i> 凌晨車輛置頂`;
+            btn.style.backgroundColor = "#2b7340";
+        }
+        filterTable();
     }
     
-    // 🌟 3. 重點優化：如果「凌晨車輛置頂」功能被啟用，強行把 midnight === 'Y' 的排到最前面！
-    if (isMidnightTopActive && filteredData.length) {
-        filteredData.sort((a, b) => {
-            const valA = (a.midnight === 'Y') ? 1 : 0;
-            const valB = (b.midnight === 'Y') ? 1 : 0;
-            return valB - valA; // 1（是）排在 0（否）前面
-        });
-    }
-    
-    currentFilteredDataForPaging = filteredData;
-    currentPage = 1;
-    renderCurrentPageData();
-}
-
-// 🌟 4. 加入切換置頂狀態的控制函數
-function toggleMidnightTop() {
-    isMidnightTopActive = !isMidnightTopActive;
-    const btn = document.getElementById('midnightTopBtn');
-    
-    if (isMidnightTopActive) {
-        // 啟用置頂時的按鈕外觀：變成亮橘色/黃色提示
-        btn.innerHTML = `<i class="fas fa-sun me-1"></i> 取消置頂`;
-        btn.style.backgroundColor = "#e67e22"; 
-    } else {
-        // 恢復預設外觀
-        btn.innerHTML = `<i class="fas fa-moon me-1"></i> 凌晨車輛置頂`;
-        btn.style.backgroundColor = "#2b7340";
-    }
-    
-    // 重新刷表格
-    filterTable();
-}
-
-// 🌟 5. 將新函數註冊到 window 全域，確保 HTML 的 onclick 可以順利呼叫
-window.toggleMidnightTop = toggleMidnightTop;
-    
-    // 新增車輛
+    // ======================= 新增與批量操作 =======================
     document.getElementById('vehicleForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!currentSession || currentRole !== 'fehd') { alert("您沒有權限編輯車輛"); return; }
@@ -978,7 +930,6 @@ window.toggleMidnightTop = toggleMidnightTop;
         } catch(err) { alert("網路錯誤：" + err); } finally { showLoading(false); }
     });
     
-    // 批次上傳
     async function batchUpload() {
         if (!currentSession || currentRole !== 'fehd') { alert("權限不足"); return; }
         if (typeof XLSX === 'undefined') {
@@ -1119,10 +1070,8 @@ window.toggleMidnightTop = toggleMidnightTop;
         if(!str) return ""; 
         return str.replace(/[&<>]/g, m=> m==='&'?'&amp;': m==='<'?'&lt;':'&gt;'); 
     }
-    // 🌟 加入一個變數，紀錄目前是否開啟「凌晨車輛置頂」狀態（預設關閉）
-let isMidnightTopActive = false;
     
-    // 全局函數
+    // 全局函數註冊
     window.sortTable = sortTable;
     window.filterTable = filterTable;
     window.doLogin = doLogin;
@@ -1134,6 +1083,7 @@ let isMidnightTopActive = false;
     window.switchRole = switchRole;
     window.handleEnterKey = handleEnterKey;
     window.goToPage = goToPage;
+    window.toggleMidnightTop = toggleMidnightTop;
     
     initByRole();
 </script>
