@@ -353,12 +353,12 @@
 <div id="loadingOverlay" class="loading-overlay"><div class="spinner-border" role="status"></div></div>
 
 <script>
-    // ======================= Service Worker 註冊（暫時禁用，因為 GitHub Pages 上沒有 sw.js）=======================
-    // 如需啟用，請先上傳 sw.js 文件到 GitHub Pages 根目錄
+    // ======================= Service Worker 暫時禁用 =======================
+    // 如需啟用 SW 緩存，請確保 sw.js 存在後取消註解
     /*
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js').then(registration => {
+            navigator.serviceWorker.register('./sw.js').then(registration => {
                 console.log('[SW] 註冊成功');
             }).catch(error => {
                 console.log('[SW] 註冊失敗:', error);
@@ -366,6 +366,19 @@
         });
     }
     */
+    
+    // ======================= 更新為您最新的 GAS URL =======================
+    const API_URL = "https://script.google.com/macros/s/AKfycbzmbQ6lJJMP0pjw12qizc0iYJ37Ez82j8wbB2EaJl2WPxuHTvlY37217-PFv6aEKSFu6A/exec";
+    
+    // ======================= 統一的 API 調用函數（避免 CORS 預檢）=======================
+    async function callAPI(action, extraData = {}) {
+        const payload = JSON.stringify({ action, ...extraData });
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: payload  // 不設置 Content-Type，讓它默認為 text/plain，避免觸發 OPTIONS 預檢
+        });
+        return await response.json();
+    }
     
     // ======================= 角色切換 =======================
     function switchRole(role) {
@@ -380,15 +393,13 @@
     }
     
     // ======================= 配額數據（從 Google Sheet CSV 讀取）=======================
-    let cachedQuotaData = null;
-    let quotaCacheExpiry = null;
     let midnightQuotaMap = {};
+    let quotaCacheExpiry = null;
     
     const MIDNIGHT_QUOTA_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vThKueDlAW8Zv2quZY56FWqeWApgRvLjIIXE7c0P05IT3BClyxWypRciJadO7Swu75X_9kAWDNt5vgk/pub?gid=1525879179&single=true&output=csv";
     
     async function loadMidnightQuotaFromSheet(forceRefresh = false) {
-        if (!forceRefresh && quotaCacheExpiry && Date.now() < quotaCacheExpiry && cachedQuotaData) {
-            midnightQuotaMap = cachedQuotaData;
+        if (!forceRefresh && quotaCacheExpiry && Date.now() < quotaCacheExpiry && Object.keys(midnightQuotaMap).length > 0) {
             return true;
         }
         try {
@@ -412,27 +423,26 @@
                         if (district === "Wong Tai Sin") { quotaData["黃大仙"] = limit; quotaData["黄大仙"] = limit; }
                         if (district === "Wan Chai") { quotaData["灣仔"] = limit; quotaData["湾仔"] = limit; }
                         if (district === "HK, KLN & N.T." || district === "HK, KLN & NT") {
-                            quotaData["香港九龍新界"] = limit; quotaData["全港"] = limit; quotaData["港九新界"] = limit;
+                            quotaData["香港九龍新界"] = limit; quotaData["全港"] = limit;
                         }
                     }
                 }
             }
             midnightQuotaMap = quotaData;
-            cachedQuotaData = quotaData;
             quotaCacheExpiry = Date.now() + 5 * 60 * 1000;
             return true;
         } catch (error) {
-            console.error("載入凌晨配額失敗，使用預設值:", error);
+            console.error("載入配額失敗，使用預設值:", error);
             midnightQuotaMap = {
-                "Central & Western": 5, "Mong Kok": 8, "Kowloon City": 2,
-                "Sham Shui Po": 5, "Wong Tai Sin": 1, "Yau Tsim": 4,
-                "Wan Chai": 2, "HK, KLN & N.T.": 26,
-                "深水埗": 5, "SSP": 5, "旺角": 8, "油尖": 4, "油尖旺": 4,
-                "中西區": 5, "中西区": 5, "九龍城": 2, "九龙城": 2,
-                "黃大仙": 1, "黄大仙": 1, "灣仔": 2, "湾仔": 2,
-                "香港九龍新界": 26, "全港": 26, "港九新界": 26
+                "Sham Shui Po": 5, "SSP": 5, "深水埗": 5,
+                "Mong Kok": 8, "旺角": 8,
+                "Yau Tsim": 4, "油尖": 4, "油尖旺": 4,
+                "Central & Western": 5, "中西區": 5,
+                "Kowloon City": 2, "九龍城": 2,
+                "Wong Tai Sin": 1, "黃大仙": 1,
+                "Wan Chai": 2, "灣仔": 2,
+                "HK, KLN & N.T.": 26, "全港": 26
             };
-            cachedQuotaData = midnightQuotaMap;
             quotaCacheExpiry = Date.now() + 5 * 60 * 1000;
             return false;
         }
@@ -441,14 +451,12 @@
     function getDistrictQuotaLimit(district) {
         if (!district) return null;
         if (midnightQuotaMap[district] !== undefined) return midnightQuotaMap[district];
-        const normalized = district.trim().toLowerCase();
+        const lower = district.trim().toLowerCase();
         for (const [key, value] of Object.entries(midnightQuotaMap)) {
-            if (key.toLowerCase() === normalized) return value;
+            if (key.toLowerCase() === lower) return value;
         }
         return null;
     }
-    
-    function hasQuotaLimit(district) { return getDistrictQuotaLimit(district) !== null; }
     
     function countMidnightVehiclesByDistrict(district, vehiclesArray) {
         if (!district || !vehiclesArray) return 0;
@@ -469,7 +477,7 @@
         return { allowed: true };
     }
     
-    // ======================= 分頁變數 =======================
+    // ======================= 分頁 =======================
     let currentPage = 1;
     let rowsPerPage = 50;
     let currentFilteredDataForPaging = [];
@@ -516,24 +524,23 @@
             const startDate = v.startDate ? v.startDate.split('T')[0] : '-'; 
             const expiry = v.expiryDate ? v.expiryDate.split('T')[0] : '-'; 
             return `<tr>
-                    <td><strong>${escapeHtml(v.plate)}</strong></td>
-                    <td>${v.pgvw}</td>
-                    <td>${startDate}</td>
-                    <td>${expiry}</td>
-                    <td>${v.vehicleDailyLimit||5}</td>
-                    <td>${v.midnight==='Y'?'✅ 是':'❌ 否'}</td>
-                    <td>${escapeHtml(v.district)}</td>
-                    <td>${v.districtDailyLimit||0}</td>
-                    <td>${escapeHtml(v.createdBy)||'-'}</td>
-                    <td>${currentRole === 'fehd' ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate.replace(/'/g, "\\'")}')">刪除</button>` : '🔍 唯讀'}</td>
-                </tr>`; 
+                        <td><strong>${escapeHtml(v.plate)}</strong></td>
+                        <td>${v.pgvw}</td>
+                        <td>${startDate}</td>
+                        <td>${expiry}</td>
+                        <td>${v.vehicleDailyLimit||5}</td>
+                        <td>${v.midnight==='Y'?'✅ 是':'❌ 否'}</td>
+                        <td>${escapeHtml(v.district)}</td>
+                        <td>${v.districtDailyLimit||0}</td>
+                        <td>${escapeHtml(v.createdBy)||'-'}</td>
+                        <td>${currentRole === 'fehd' ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate.replace(/'/g, "\\'")}')">刪除</button>` : '🔍 唯讀'}</td>
+                    </tr>`; 
         }).join('');
         if(recordSpan) recordSpan.innerText = `${currentFilteredDataForPaging.length} 筆`;
         renderPagination(currentFilteredDataForPaging.length, currentPage);
     }
     
-    // ======================= 核心 API 變數（已更新為新 GAS URL）=======================
-    const API_URL = "https://script.google.com/macros/s/AKfycbzzMf-iGBT3LEwlAFSntVYA7IEmrctIMBcQfZIaZALpSkFwPExMT_W3K37ysRVtxgoUfg/exec";
+    // ======================= 核心邏輯 =======================
     let currentSession = null;
     let availableDistricts = [];
     let currentRole = "fehd";
@@ -602,33 +609,24 @@
         });
     }
     
-    // ======================= 載入車輛資料（含 localStorage 緩存）=======================
     async function loadVehicles(forceRefresh = false) {
         if (!currentSession) return;
         
         const cacheKey = 'vehicles_cache_' + currentSession.userId;
         const cached = localStorage.getItem(cacheKey);
         
-        // 1. 立即顯示 localStorage 緩存
         if (!forceRefresh && cached) {
             try {
                 const cachedData = JSON.parse(cached);
                 vehiclesData = cachedData;
                 filterTable();
                 updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
-                console.log('✅ 從 localStorage 瞬間載入:', vehiclesData.length, '筆');
+                console.log('✅ 從緩存載入:', vehiclesData.length, '筆');
             } catch(e) { console.warn("緩存解析失敗", e); }
         }
         
-        // 2. 後台獲取最新數據
         try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'getVehicles', session: currentSession })
-            });
-            const result = await response.json();
+            const result = await callAPI('getVehicles', { session: currentSession });
             
             if (result.success && result.data) {
                 vehiclesData = result.data;
@@ -647,7 +645,6 @@
         }
     }
     
-    // ======================= 初始化與登入 =======================
     async function initByRole() {
         await loadMidnightQuotaFromSheet(false);
         let urlRole = getUrlParameter('role');
@@ -657,20 +654,20 @@
             document.getElementById('loginTitle').innerHTML = '食環署車輛管理系統';
             document.getElementById('mainTitle').innerHTML = '食環署車輛管理系統';
             document.getElementById('loginBtn').innerHTML = '食環署登入';
-            if(document.getElementById('vehicleFormSection')) document.getElementById('vehicleFormSection').style.display = 'block';
-            if(document.getElementById('batchSection')) document.getElementById('batchSection').style.display = 'block';
+            document.getElementById('vehicleFormSection').style.display = 'block';
+            document.getElementById('batchSection').style.display = 'block';
         } else {
             document.getElementById('loginTitle').innerHTML = '環保署車輛管理系統';
             document.getElementById('mainTitle').innerHTML = '環保署車輛管理系統';
             document.getElementById('loginBtn').innerHTML = '環保署登入';
-            if(document.getElementById('vehicleFormSection')) document.getElementById('vehicleFormSection').style.display = 'none';
-            if(document.getElementById('batchSection')) document.getElementById('batchSection').style.display = 'none';
+            document.getElementById('vehicleFormSection').style.display = 'none';
+            document.getElementById('batchSection').style.display = 'none';
         }
         const today = new Date();
         const yyyy = today.getFullYear(), mm = String(today.getMonth() + 1).padStart(2,'0'), dd = String(today.getDate()).padStart(2,'0');
         const startDateInput = document.getElementById('startDate');
         if (startDateInput) startDateInput.value = `${yyyy}-${mm}-${dd}`;
-        loadUserList();
+        await loadUserList();
     }
     
     function showLoading(show) { 
@@ -680,13 +677,7 @@
     
     async function loadUserList() {
         try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'getUserList' })
-            });
-            const result = await response.json();
+            const result = await callAPI('getUserList');
             if (result.success && result.users) {
                 const select = document.getElementById('userId');
                 select.innerHTML = '<option value="">-- 請選擇用戶 --</option>';
@@ -702,13 +693,7 @@
         if (!userId || !password) { alert("請輸入帳號及密碼"); return; }
         showLoading(true);
         try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'login', userId, password })
-            });
-            const result = await response.json();
+            const result = await callAPI('login', { userId, password });
             if (result.success) {
                 currentSession = result.session;
                 document.getElementById('loginPage').style.display = 'none';
@@ -749,8 +734,7 @@
     
     function logout() { 
         if (currentSession) {
-            const cacheKey = 'vehicles_cache_' + currentSession.userId;
-            localStorage.removeItem(cacheKey);
+            localStorage.removeItem('vehicles_cache_' + currentSession.userId);
         }
         currentSession = null; 
         document.getElementById('loginPage').style.display = 'block'; 
@@ -762,13 +746,7 @@
     
     async function loadDistrictQuota() {
         try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'getDistrictQuota', session: currentSession })
-            });
-            const result = await response.json();
+            const result = await callAPI('getDistrictQuota', { session: currentSession });
             if (result.success && result.data) { 
                 districtQuotaMap = {}; 
                 result.data.forEach(q => { districtQuotaMap[q.district] = q.dailyLimit; }); 
@@ -820,18 +798,6 @@
         renderCurrentPageData();
     }
     
-    // 確保 XLSX 庫已加載的函數
-    async function ensureXLSXLoaded() {
-        if (window.XLSX) return true;
-        return new Promise((resolve) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.bootcdn.net/ajax/libs/xlsx/0.20.2/xlsx.full.min.js';
-            script.onload = () => resolve(true);
-            script.onerror = () => resolve(false);
-            document.head.appendChild(script);
-        });
-    }
-    
     // 新增車輛
     document.getElementById('vehicleForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -845,13 +811,7 @@
         if (!data.plate || isNaN(data.pgvw) || !data.expiryDate || !data.district) { alert("請填寫完整資料"); return; }
         showLoading(true);
         try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'addVehicle', data, session: currentSession })
-            });
-            const result = await response.json();
+            const result = await callAPI('addVehicle', { data, session: currentSession });
             if (result.success) { 
                 alert(result.msg); 
                 localStorage.removeItem('vehicles_cache_' + currentSession.userId);
@@ -871,7 +831,14 @@
         if (!currentSession || currentRole !== 'fehd') { alert("權限不足"); return; }
         
         // 確保 XLSX 庫已加載
-        await ensureXLSXLoaded();
+        if (!window.XLSX) {
+            await new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.bootcdn.net/ajax/libs/xlsx/0.20.2/xlsx.full.min.js';
+                script.onload = resolve;
+                document.head.appendChild(script);
+            });
+        }
         if (!window.XLSX) {
             alert("無法載入 Excel 處理庫，請檢查網路連線");
             return;
@@ -910,6 +877,7 @@
                 let validData = dataList.filter(d => d.plate && d.pgvw > 0 && d.expiryDate && d.district);
                 if (!validData.length) { alert("沒有有效的車輛資料"); showLoading(false); return; }
                 
+                // 前端配額預檢
                 let quotaErrors = [];
                 let tempCheckVehicles = [...vehiclesData];
                 for (let item of validData) {
@@ -924,22 +892,16 @@
                 validData = validData.filter((_, idx) => !quotaErrors.some(e => e.includes(validData[idx].plate)));
                 if (!validData.length) { alert("沒有有效的車輛資料或配額已滿"); showLoading(false); return; }
                 
-                const resp = await fetch(API_URL, {
-                    method: 'POST',
-                    mode: 'cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'batchUpload', dataList: validData, session: currentSession })
-                });
-                const res = await resp.json();
-                if (res.success) { 
+                const result = await callAPI('batchUpload', { dataList: validData, session: currentSession });
+                if (result.success) { 
                     localStorage.removeItem('vehicles_cache_' + currentSession.userId);
                     const resultDiv = document.getElementById('batchResult'); 
-                    resultDiv.innerHTML = `<div>✅ ${res.msg}</div>`; 
+                    resultDiv.innerHTML = `<div>✅ ${result.msg}</div>`; 
                     resultDiv.style.display = 'block'; 
                     await loadVehicles(true); 
                     setTimeout(() => resultDiv.style.display = 'none', 4000); 
                 } else { 
-                    alert("上傳失敗：" + res.msg); 
+                    alert("上傳失敗：" + result.msg); 
                 }
             } catch(err) { 
                 console.error("解析錯誤:", err);
@@ -973,26 +935,27 @@
         if(!confirm(`確定要刪除車輛 ${plate} 嗎？`)) return; 
         showLoading(true); 
         try{ 
-            const resp=await fetch(API_URL, {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'deleteVehicle', plate, session: currentSession })
-            }); 
-            const res=await resp.json(); 
-            if(res.success){ 
-                alert(res.msg); 
+            const result = await callAPI('deleteVehicle', { plate, session: currentSession });
+            if(result.success){ 
+                alert(result.msg); 
                 localStorage.removeItem('vehicles_cache_' + currentSession.userId);
                 await loadVehicles(true); 
             } else { 
-                alert("刪除失敗："+res.msg); 
+                alert("刪除失敗："+result.msg); 
             }
         }catch(err){ alert("網路錯誤："+err); } 
         finally{ showLoading(false); } 
     }
     
     async function exportExcel() {
-        await ensureXLSXLoaded();
+        if (!window.XLSX) {
+            await new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.bootcdn.net/ajax/libs/xlsx/0.20.2/xlsx.full.min.js';
+                script.onload = resolve;
+                document.head.appendChild(script);
+            });
+        }
         if (!window.XLSX) {
             alert("無法載入 Excel 處理庫，請檢查網路連線");
             return;
@@ -1000,16 +963,10 @@
         if(!currentSession) return; 
         showLoading(true); 
         try{ 
-            const resp=await fetch(API_URL, {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'getVehicles', session: currentSession })
-            }); 
-            const res=await resp.json(); 
-            if(res.success && res.data.length){ 
+            const result = await callAPI('getVehicles', { session: currentSession });
+            if(result.success && result.data.length){ 
                 const sheetData=[["車牌","PGVW","開始日期","有效日期","車輛每日上限","凌晨授權","區域","區域每日上限","建立者"]]; 
-                res.data.forEach(v=>{ 
+                result.data.forEach(v=>{ 
                     sheetData.push([v.plate, v.pgvw, v.startDate?.split('T')[0]||"", v.expiryDate?.split('T')[0]||"", v.vehicleDailyLimit||5, v.midnight==='Y'?"是":"否", v.district, v.districtDailyLimit||0, v.createdBy||""]); 
                 }); 
                 const ws=window.XLSX.utils.aoa_to_sheet(sheetData); 
