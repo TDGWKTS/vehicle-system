@@ -353,6 +353,17 @@
 <div id="loadingOverlay" class="loading-overlay"><div class="spinner-border" role="status"></div></div>
 
 <script>
+    // ======================= Service Worker 注册 =======================
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then(registration => {
+                console.log('[SW] 註冊成功，作用域:', registration.scope);
+            }).catch(error => {
+                console.log('[SW] 註冊失敗:', error);
+            });
+        });
+    }
+    
     // ======================= 角色切換 =======================
     function switchRole(role) {
         window.location.href = window.location.pathname + '?role=' + role;
@@ -365,7 +376,7 @@
         }
     }
     
-    // ======================= 配額數據（從 Google Sheet CSV 讀取，帶緩存）=======================
+    // ======================= 配額數據（從 Google Sheet CSV 讀取）=======================
     let cachedQuotaData = null;
     let quotaCacheExpiry = null;
     let midnightQuotaMap = {};
@@ -588,48 +599,50 @@
         });
     }
     
-    // ======================= 優化: 車輛數據 Stale-While-Revalidate 緩存 =======================
+    // ======================= 優化版 loadVehicles：Service Worker + localStorage 雙重緩存 =======================
     async function loadVehicles(forceRefresh = false) {
         if (!currentSession) return;
         
         const cacheKey = 'vehicles_cache_' + currentSession.userId;
         const cached = localStorage.getItem(cacheKey);
         
-        // 1. 立即顯示緩存數據（如果有）
+        // 1. 立即顯示 localStorage 緩存（瞬間顯示，<10ms）
         if (!forceRefresh && cached) {
             try {
                 const cachedData = JSON.parse(cached);
                 vehiclesData = cachedData;
                 filterTable();
                 updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
+                console.log('✅ 從 localStorage 瞬間載入:', vehiclesData.length, '筆');
             } catch(e) { console.warn("緩存解析失敗", e); }
         }
         
-        // 2. 後台靜默獲取最新數據（不顯示 loading，體驗更流暢）
+        // 2. 後台獲取最新數據（Service Worker 會自動緩存）
         try {
             const response = await fetch(API_URL, {
                 method: 'POST',
                 body: JSON.stringify({ action: 'getVehicles', session: currentSession })
             });
             const result = await response.json();
+            
             if (result.success && result.data) {
                 vehiclesData = result.data;
                 localStorage.setItem(cacheKey, JSON.stringify(vehiclesData));
                 filterTable();
                 updateMidnightQuotaPanel(vehiclesData, currentUserViewDistricts);
+                console.log('🔄 後台更新完成:', vehiclesData.length, '筆');
             } else if (!cached) {
-                // 只有在沒有緩存且請求失敗時才顯示錯誤
                 document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">無法載入資料</td></tr>';
             }
         } catch(err) {
-            console.error("載入車輛失敗:", err);
+            console.error("網路錯誤:", err);
             if (!cached) {
-                document.getElementById('vehicleList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
+                document.getElementById('vehicleList').innerHTML = '<table><td colspan="10" class="text-center text-danger">網路錯誤，請稍後再試</td></tr>';
             }
         }
     }
     
-    // ======================= 初始化與登入（優化：並行加載）=======================
+    // ======================= 初始化與登入 =======================
     async function initByRole() {
         await loadMidnightQuotaFromSheet(false);
         let urlRole = getUrlParameter('role');
@@ -714,16 +727,17 @@
                         };
                     }
                 }
-                // 優化: 並行加載配額和車輛數據
-                await Promise.all([
-                    loadDistrictQuota(),
-                    loadVehicles(false)
-                ]);
+                await loadVehicles(false);
             } else { alert("登入失敗：" + result.msg); }
         } catch (err) { alert("網路錯誤：" + err); } finally { showLoading(false); }
     }
     
     function logout() { 
+        // 登出時清除當前用戶的車輛緩存
+        if (currentSession) {
+            const cacheKey = 'vehicles_cache_' + currentSession.userId;
+            localStorage.removeItem(cacheKey);
+        }
         currentSession = null; 
         document.getElementById('loginPage').style.display = 'block'; 
         document.getElementById('mainPage').style.display = 'none'; 
@@ -787,7 +801,37 @@
         renderCurrentPageData();
     }
     
-    // 批次上傳 - 利用 GAS 端智能處理，前端大幅簡化
+    // 新增車輛
+    document.getElementById('vehicleForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentSession || currentRole !== 'fehd') { alert("您沒有權限編輯車輛"); return; }
+        const plate = document.getElementById('plate').value.trim().toUpperCase();
+        const district = document.getElementById('district').value;
+        const midnight = document.getElementById('midnight').value;
+        const quotaCheck = checkMidnightQuotaViolation(district, midnight, null, vehiclesData);
+        if (!quotaCheck.allowed) { alert(quotaCheck.message); return; }
+        const data = { plate, pgvw: parseFloat(document.getElementById('pgvw').value), startDate: document.getElementById('startDate').value, expiryDate: document.getElementById('expiryDate').value, vehicleDailyLimit: parseInt(document.getElementById('vehicleDailyLimit').value)||5, midnight, district };
+        if (!data.plate || isNaN(data.pgvw) || !data.expiryDate || !data.district) { alert("請填寫完整資料"); return; }
+        showLoading(true);
+        try {
+            const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'addVehicle', data, session: currentSession }) });
+            const result = await response.json();
+            if (result.success) { 
+                alert(result.msg); 
+                // 清除緩存
+                localStorage.removeItem('vehicles_cache_' + currentSession.userId);
+                document.getElementById('plate').value = ""; 
+                document.getElementById('pgvw').value = ""; 
+                document.getElementById('vehicleDailyLimit').value = "5"; 
+                document.getElementById('expiryDate').value = ""; 
+                await loadVehicles(true); 
+            } else { 
+                alert("操作失敗：" + result.msg); 
+            }
+        } catch(err) { alert("網路錯誤：" + err); } finally { showLoading(false); }
+    });
+    
+    // 批次上傳
     async function batchUpload() {
         if (!currentSession || currentRole !== 'fehd') { alert("權限不足"); return; }
         const file = document.getElementById('excelFile').files[0]; 
@@ -841,6 +885,8 @@
                 const resp = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'batchUpload', dataList: validData, session: currentSession }) });
                 const res = await resp.json();
                 if (res.success) { 
+                    // 清除緩存
+                    localStorage.removeItem('vehicles_cache_' + currentSession.userId);
                     const resultDiv = document.getElementById('batchResult'); 
                     resultDiv.innerHTML = `<div>✅ ${res.msg}</div>`; 
                     resultDiv.style.display = 'block'; 
@@ -854,33 +900,6 @@
         reader.readAsArrayBuffer(file);
     }
     
-    document.getElementById('vehicleForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        if (!currentSession || currentRole !== 'fehd') { alert("您沒有權限編輯車輛"); return; }
-        const plate = document.getElementById('plate').value.trim().toUpperCase();
-        const district = document.getElementById('district').value;
-        const midnight = document.getElementById('midnight').value;
-        const quotaCheck = checkMidnightQuotaViolation(district, midnight, null, vehiclesData);
-        if (!quotaCheck.allowed) { alert(quotaCheck.message); return; }
-        const data = { plate, pgvw: parseFloat(document.getElementById('pgvw').value), startDate: document.getElementById('startDate').value, expiryDate: document.getElementById('expiryDate').value, vehicleDailyLimit: parseInt(document.getElementById('vehicleDailyLimit').value)||5, midnight, district };
-        if (!data.plate || isNaN(data.pgvw) || !data.expiryDate || !data.district) { alert("請填寫完整資料"); return; }
-        showLoading(true);
-        try {
-            const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'addVehicle', data, session: currentSession }) });
-            const result = await response.json();
-            if (result.success) { 
-                alert(result.msg); 
-                document.getElementById('plate').value = ""; 
-                document.getElementById('pgvw').value = ""; 
-                document.getElementById('vehicleDailyLimit').value = "5"; 
-                document.getElementById('expiryDate').value = ""; 
-                await loadVehicles(true); 
-            } else { 
-                alert("操作失敗：" + result.msg); 
-            }
-        } catch(err) { alert("網路錯誤：" + err); } finally { showLoading(false); }
-    });
-    
     function formatExcelDate(val){ 
         if(!val) return ""; 
         if(val instanceof Date) return val.toISOString().split('T')[0]; 
@@ -891,18 +910,26 @@
         return isNaN(d.getTime())?"":d.toISOString().split('T')[0]; 
     }
     
+    // 刪除車輛
     async function deleteVehicle(plate){ 
         if(!confirm(`確定要刪除車輛 ${plate} 嗎？`)) return; 
         showLoading(true); 
         try{ 
             const resp=await fetch(API_URL,{method:'POST',body:JSON.stringify({action:'deleteVehicle',plate,session:currentSession})}); 
             const res=await resp.json(); 
-            if(res.success){ alert(res.msg); await loadVehicles(true); } 
-            else alert("刪除失敗："+res.msg); 
+            if(res.success){ 
+                alert(res.msg); 
+                // 清除緩存
+                localStorage.removeItem('vehicles_cache_' + currentSession.userId);
+                await loadVehicles(true); 
+            } else { 
+                alert("刪除失敗："+res.msg); 
+            }
         }catch(err){ alert("網路錯誤："+err); } 
         finally{ showLoading(false); } 
     }
     
+    // 匯出 Excel（按需加載 XLSX 庫）
     async function exportExcel() {
         if (!window.XLSX) {
             await new Promise((resolve) => {
