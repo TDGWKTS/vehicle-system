@@ -744,8 +744,13 @@
                 document.getElementById('loginPage').style.display = 'none';
                 document.getElementById('mainPage').style.display = 'block';
                 let roleClass = currentRole === 'fehd' ? 'role-fehd' : 'role-weighbridge';
-                let roleName = currentRole === 'fehd' ? '食環署' : '環保署';
-                document.getElementById('userInfo').innerHTML = `${result.session.userId} <span class="role-tag ${roleClass}">${roleName}</span>`;
+let roleName = currentRole === 'fehd' ? '食環署' : '環保署';
+document.getElementById('userInfo').innerHTML = `
+    <span class="d-block mb-1">👤 ${result.session.userId}</span>
+    <span class="role-tag ${roleClass} d-inline-block mt-1" style="margin-left: 0; padding: 4px 14px; font-size: 0.75rem;">
+        ${roleName}
+    </span>
+`;
                 const viewText = result.session.viewDistricts === "all" ? "所有區域" : result.session.viewDistricts.join("、");
                 document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<strong>${viewText}</strong>`;
                 currentUserViewDistricts = (result.session.viewDistricts === "all") ? "all" : result.session.viewDistricts;
