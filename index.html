@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>車輛管理系統 | 動態配額管制 | 進階版</title>
+    <title>車輛管理系統 | 動態配額管制</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
@@ -14,253 +14,60 @@
             --mc-border: #bdd4b0;
             --mc-button: #4a6a3b;
             --mc-button-hover: #2f5522;
-            --primary-green: #198754;
-            --light-green-bg: #eef5ea;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body { 
             background: linear-gradient(135deg, #d4ebce 0%, #e2f3dc 100%);
             font-family: "Helvetica Neue", Helvetica, "PingFang HK", "Microsoft YaHei", Arial, sans-serif;
-            color: var(--mc-text);
             min-height: 100vh;
         }
-
-        .login-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 1.5rem;
-        }
-
-        .login-box {
-            width: 100%;
-            max-width: 480px;
-            padding: 2rem 2rem 2.2rem;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(2px);
-            border-radius: 32px;
-            box-shadow: 0 25px 45px -12px rgba(40, 60, 30, 0.35);
-            border: 1px solid rgba(120, 160, 90, 0.3);
-            margin: 0 auto;
-        }
-
-        .logo-dual {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 2.2rem;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-        }
-        .logo-item { text-align: center; transition: transform 0.2s ease; cursor: pointer; }
-        .logo-item:hover { transform: scale(1.02); }
-        .logo-img { height: 72px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.1)); }
-        .logo-label { font-size: 0.7rem; font-weight: 600; color: #446d3c; margin-top: 6px; letter-spacing: 0.5px; }
-
-        .login-logo {
-            font-family: "Georgia", serif;
-            font-size: 1.6rem;
-            font-style: italic;
-            margin-bottom: 1.2rem;
-            color: #2a5e3a;
-            font-weight: 700;
-            border-bottom: 2px solid #cde0c2;
-            display: inline-block;
-            padding-bottom: 8px;
-        }
-
-        .form-control-lg, .form-select-lg {
-            background-color: #ffffff;
-            border: 1px solid var(--mc-border);
-            border-radius: 28px;
-            color: #2c3e2f;
-            font-size: 16px;
-            padding: 12px 20px;
-            margin-bottom: 18px;
-            width: 100%;
-            transition: all 0.2s;
-        }
-
-        .form-control-lg:focus, .form-select-lg:focus {
-            outline: none;
-            border-color: #7cae6a;
-            box-shadow: 0 0 0 3px rgba(100, 150, 70, 0.2);
-        }
-
-        .btn-login {
-            background-color: var(--mc-button);
-            border: none;
-            border-radius: 40px;
-            color: white;
-            font-weight: 600;
-            padding: 12px 24px;
-            cursor: pointer;
-            font-size: 1rem;
-            width: 100%;
-            transition: all 0.2s;
-            letter-spacing: 1px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-        }
-
-        .btn-login:hover {
-            background-color: var(--mc-button-hover);
-            transform: translateY(-1px);
-            box-shadow: 0 8px 20px rgba(60, 90, 40, 0.25);
-        }
-
+        .login-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 1.5rem; }
+        .login-box { width: 100%; max-width: 480px; padding: 2rem; background: rgba(255,255,255,0.95); border-radius: 32px; box-shadow: 0 25px 45px -12px rgba(40,60,30,0.35); }
+        .logo-dual { display: flex; align-items: center; justify-content: center; gap: 2.2rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .logo-item { text-align: center; cursor: pointer; }
+        .logo-img { height: 72px; width: auto; }
+        .logo-label { font-size: 0.7rem; font-weight: 600; color: #446d3c; margin-top: 6px; }
+        .login-logo { font-size: 1.6rem; font-style: italic; margin-bottom: 1.2rem; color: #2a5e3a; font-weight: 700; border-bottom: 2px solid #cde0c2; display: inline-block; }
+        .form-control-lg, .form-select-lg { background: white; border: 1px solid var(--mc-border); border-radius: 28px; padding: 12px 20px; margin-bottom: 18px; width: 100%; }
+        .btn-login { background: var(--mc-button); border: none; border-radius: 40px; color: white; font-weight: 600; padding: 12px; width: 100%; cursor: pointer; }
+        .btn-login:hover { background: var(--mc-button-hover); }
         .dashboard-wrapper { display: flex; min-height: 100vh; background: #f8faf5; }
-        
-        #sidebar { 
-            width: 270px; 
-            background: #1f3b2c; 
-            color: #eef4e5; 
-            padding: 1.8rem 1.2rem;
-            box-shadow: 2px 0 15px rgba(0,0,0,0.08);
-        }
-        
-        .sidebar-logo-area {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 2rem;
-            border-bottom: 1px solid #427c54;
-            padding-bottom: 1.2rem;
-        }
-        .sidebar-small-logo { display: flex; gap: 1.2rem; justify-content: center; margin-bottom: 0.8rem; }
-        .sidebar-small-logo img { height: 42px; width: auto; opacity: 0.92; }
-        
+        #sidebar { width: 270px; background: #1f3b2c; color: #eef4e5; padding: 1.8rem 1.2rem; }
         .main-content { flex-grow: 1; padding: 2rem; background: #fefef7; }
-        
-        .loading-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(235, 245, 225, 0.96); z-index: 9999; 
-            display: none; justify-content: center; align-items: center; 
-            backdrop-filter: blur(4px);
-            flex-direction: column;
-        }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(235,245,225,0.96); z-index: 9999; display: none; justify-content: center; align-items: center; flex-direction: column; }
         .spinner-border { width: 3rem; height: 3rem; color: #3a784a; }
-        .loading-text { margin-top: 1rem; color: #2a5e3a; font-weight: 500; }
-
-        .card-custom {
-            border-radius: 20px;
-            border: none;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
-            margin-bottom: 1.8rem;
-            overflow: hidden;
-        }
-        .card-header-custom {
-            background: #eef3e9;
-            border-bottom: 2px solid #cde0c2;
-            font-weight: 600;
-            padding: 1rem 1.5rem;
-            color: #2a5e3a;
-        }
-        
+        .card-custom { border-radius: 20px; border: none; box-shadow: 0 8px 20px rgba(0,0,0,0.05); margin-bottom: 1.8rem; overflow: hidden; }
+        .card-header-custom { background: #eef3e9; border-bottom: 2px solid #cde0c2; font-weight: 600; padding: 1rem 1.5rem; color: #2a5e3a; }
         .table-container { max-height: 520px; overflow-y: auto; }
-        .table thead th { position: sticky; top: 0; background: #f9fbf7; z-index: 10; font-weight: 600; color: #2a5e3a; }
-        .sortable-header { cursor: pointer; user-select: none; transition: background 0.1s; }
+        .table thead th { position: sticky; top: 0; background: #f9fbf7; }
+        .sortable-header { cursor: pointer; user-select: none; }
         .sortable-header:hover { background-color: #e9f0e3; }
-        
-        .search-input {
-            width: 260px;
-            border-radius: 40px;
-            padding: 6px 18px;
-            border: 1px solid #cde0c2;
-            transition: all 0.2s;
-        }
-        .search-input:focus { outline: none; border-color: #5f8b4a; box-shadow: 0 0 0 2px rgba(95, 139, 74, 0.2); }
-        
-        .role-tag { background: #426e3e; padding: 4px 12px; border-radius: 40px; font-size: 0.7rem; font-weight: 500; margin-left: 8px; color: white; }
-        .role-weighbridge { background: #5f8b5b; }
-        .role-fehd { background: #2b7340; }
-        .user-badge { background: #e9ecef; padding: 5px 14px; border-radius: 30px; font-size: 0.85rem; font-weight: 500; }
-        select:disabled { background-color: #eef3e9; cursor: not-allowed; opacity: 0.85; }
-        
-        .quota-card {
-            cursor: pointer;
-            transition: all 0.2s;
-            border-left: 4px solid transparent;
-        }
-        .quota-card:hover {
-            transform: translateY(-2px);
-            background-color: #fff4df !important;
-            border-left-color: #4a6a3b;
-        }
-        .quota-card.active {
-            background-color: #e6f0da !important;
-            border-left-color: #2b7340;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        }
-        
-        .hidden-section {
-            display: none !important;
-        }
-        
-        .pagination-container {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 15px;
-            background: #f9fbf7;
-            border-top: 1px solid #e0ecd6;
-            flex-wrap: wrap;
-        }
-        .pagination-btn {
-            background: white;
-            border: 1px solid #cde0c2;
-            padding: 5px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: 0.1s;
-        }
-        .pagination-btn:hover {
-            background: #eef3e9;
-            border-color: #9aba85;
-        }
-        .pagination-btn.active-page {
-            background: #2b7340;
-            color: white;
-            border-color: #2b7340;
-        }
-        .pagination-info {
-            font-size: 13px;
-            color: #5c7053;
-        }
-        .loading-placeholder {
-            text-align: center;
-            padding: 3rem;
-            color: #7c9c6e;
-            background: #fefef7;
-            border-radius: 20px;
-        }
+        .search-input { width: 260px; border-radius: 40px; padding: 6px 18px; border: 1px solid #cde0c2; }
+        .role-tag { background: #426e3e; padding: 4px 12px; border-radius: 40px; font-size: 0.7rem; font-weight: 500; display: inline-block; margin-top: 8px; }
+        .quota-card { cursor: pointer; transition: all 0.2s; border-left: 4px solid transparent; }
+        .quota-card:hover { transform: translateY(-2px); background-color: #fff4df !important; border-left-color: #4a6a3b; }
+        .pagination-container { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 15px; background: #f9fbf7; border-top: 1px solid #e0ecd6; flex-wrap: wrap; }
+        .pagination-btn { background: white; border: 1px solid #cde0c2; padding: 5px 12px; border-radius: 20px; cursor: pointer; }
+        .pagination-btn.active-page { background: #2b7340; color: white; }
+        .loading-placeholder { text-align: center; padding: 3rem; color: #7c9c6e; }
         @media (max-width: 768px) {
             .dashboard-wrapper { flex-direction: column; }
             #sidebar { width: 100%; text-align: center; }
             .main-content { padding: 1.2rem; }
-            .logo-dual { gap: 1rem; }
-            .logo-img { height: 55px; }
-            .login-box { padding: 1.5rem; margin: 1rem auto; }
         }
     </style>
 </head>
 <body>
 
-<!-- 登入頁面 -->
 <div id="loginPage" class="login-container">
     <div class="login-box">
         <div class="logo-dual">
             <div class="logo-item" onclick="switchRole('epd')">
-                <img class="logo-img" src="logo/epd.png" alt="環境保護署" onerror="this.onerror=null; this.src='https://placehold.co/100x70?text=EPD'; this.style.opacity='0.7'">
+                <img class="logo-img" src="logo/epd.png" onerror="this.src='https://placehold.co/100x70?text=EPD'">
                 <div class="logo-label">環保署職員</div>
             </div>
             <div class="logo-item" onclick="switchRole('fehd')">
-                <img class="logo-img" src="logo/fehd.svg" alt="食物環境衛生署" onerror="this.onerror=null; this.src='https://placehold.co/100x70?text=FEHD'; this.style.opacity='0.7'">
+                <img class="logo-img" src="logo/fehd.svg" onerror="this.src='https://placehold.co/100x70?text=FEHD'">
                 <div class="logo-label">食環署職員</div>
             </div>
         </div>
@@ -268,23 +75,20 @@
         <div class="mb-3"><select id="userId" class="form-select-lg"><option value="">-- 請選擇用戶 --</option></select></div>
         <div class="mb-3"><input type="password" id="password" class="form-control-lg" placeholder="請輸入密碼" onkeypress="handleEnterKey(event)"></div>
         <div class="mt-2"><button onclick="doLogin()" class="btn-login" id="loginBtn"><i class="fas fa-sign-in-alt me-2"></i> 登入系統</button></div>
-        <div class="mt-3 small text-center text-muted" style="color:#5a7c4e !important;"><i class="far fa-id-card"></i> 點擊上方圖示切換角色 | 按 Enter 鍵快速登入</div>
     </div>
 </div>
 
-<!-- 主控台 -->
 <div id="mainPage" style="display: none;">
     <div class="dashboard-wrapper">
         <div id="sidebar">
             <div class="sidebar-logo-area">
-                <div class="sidebar-small-logo">
-                    <img src="logo/epd.png" alt="環保署" onerror="this.style.display='none'">
-                    <img src="logo/fehd.svg" alt="食環署" onerror="this.style.display='none'">
-                </div>
                 <div style="font-weight: 700; font-size: 1.1rem;">車輛管理系統</div>
                 <div style="font-size: 0.65rem; opacity: 0.8;">食環署 • 環保署 共用平台</div>
             </div>
-            <div class="mb-4"><div id="userInfo" class="fw-bold mb-2">👤 用戶</div><div id="viewHint" class="small" style="color:#cfe6c2;">🔍 區域權限</div></div>
+            <div class="mb-4">
+                <div id="userInfo" class="fw-bold mb-2">👤 用戶</div>
+                <div id="viewHint" class="small" style="color:#cfe6c2;">🔍 區域權限</div>
+            </div>
             <hr style="border-color: #427c54;">
             <div class="mt-3">
                 <button class="btn btn-sm btn-light w-100 mb-2" onclick="exportExcel()" style="border-radius: 40px;"><i class="fas fa-file-excel me-1"></i> 匯出 Excel</button>
@@ -294,66 +98,58 @@
         
         <div class="main-content">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-                <h3 id="mainTitle" class="fw-bold" style="color:#2a5e3a;">🚛 車輛資料表（含凌晨配額管制）</h3>
-                <div class="d-flex gap-2 align-items-center">
+                <h3 id="mainTitle" class="fw-bold" style="color:#2a5e3a;">🚛 車輛資料表</h3>
+                <div class="d-flex gap-2">
                     <input type="text" id="searchInput" class="search-input" placeholder="🔍 搜尋車牌 / 區域" onkeyup="filterTable()">
                     <button onclick="loadVehicles(true)" class="btn btn-sm btn-outline-success" style="border-radius: 30px;"><i class="fas fa-sync-alt"></i> 重新整理</button>
                 </div>
             </div>
             
             <div id="vehicleFormSection" style="display: none;" class="card-custom card">
-                <div class="card-header-custom">➕ 新增車輛（食環署權限）<span class="badge bg-warning text-dark ms-2">凌晨車輛受區域配額限制</span></div>
+                <div class="card-header-custom">➕ 新增車輛（食環署權限）</div>
                 <div class="card-body p-4">
                     <form id="vehicleForm">
                         <div class="row g-3">
-                            <div class="col-md-2"><label class="form-label fw-semibold">車牌號碼 *</label><input type="text" id="plate" class="form-control" required placeholder="AB1234" oninput="this.value = this.value.toUpperCase()"></div>
-                            <div class="col-md-2"><label class="form-label fw-semibold">PGVW（噸）*</label><input type="number" id="pgvw" class="form-control" step="0.01" required placeholder="5.5"></div>
-                            <div class="col-md-2"><label class="form-label fw-semibold">開始日期</label><input type="date" id="startDate" class="form-control"></div>
-                            <div class="col-md-2"><label class="form-label fw-semibold">有效日期 *</label><input type="date" id="expiryDate" class="form-control" required></div>
-                            <div class="col-md-2"><label class="form-label fw-semibold">車輛每日上限 *</label><input type="number" id="vehicleDailyLimit" class="form-control" value="5" required></div>
-                            <div class="col-md-2"><label class="form-label fw-semibold">凌晨授權</label><select id="midnight" class="form-select"><option value="N">否</option><option value="Y">是</option></select></div>
-                            <div class="col-md-3"><label class="form-label fw-semibold">所屬區域 *</label><select id="district" class="form-select" required><option value="">請選擇</option></select></div>
-                            <div class="col-md-3"><label class="form-label fw-semibold">區域每日上限</label><input type="number" id="districtDailyLimit" class="form-control" value="50" readonly style="background-color: #eef3e9;"><div class="form-text text-muted small">💡 由管理員在 Google Sheet 設定</div></div>
-                            <!-- 新增三個必填欄位 -->
-                            <div class="col-md-4"><label class="form-label fw-semibold">聯絡人 *</label><input type="text" id="contactPerson" class="form-control" required placeholder="陳大文"></div>
-                            <div class="col-md-4"><label class="form-label fw-semibold">聯絡電話 * (8位數字)</label><input type="tel" id="telephone" class="form-control" required placeholder="23456789" pattern="\d{8}"></div>
-                            <div class="col-md-4"><label class="form-label fw-semibold">電子郵件 *</label><input type="email" id="email" class="form-control" required placeholder="example@domain.com"></div>
-                            <div class="col-12"><button type="submit" class="btn btn-success w-100 py-2 fw-semibold" style="background: #3f6e37; border: none; border-radius: 40px;">✅ 儲存車輛資料</button></div>
+                            <div class="col-md-2"><label class="form-label">車牌號碼 *</label><input type="text" id="plate" class="form-control" required></div>
+                            <div class="col-md-2"><label class="form-label">PGVW（噸）*</label><input type="number" id="pgvw" class="form-control" step="0.01" required></div>
+                            <div class="col-md-2"><label class="form-label">開始日期</label><input type="date" id="startDate" class="form-control"></div>
+                            <div class="col-md-2"><label class="form-label">有效日期 *</label><input type="date" id="expiryDate" class="form-control" required></div>
+                            <div class="col-md-2"><label class="form-label">車輛每日上限 *</label><input type="number" id="vehicleDailyLimit" class="form-control" value="5" required></div>
+                            <div class="col-md-2"><label class="form-label">凌晨授權</label><select id="midnight" class="form-select"><option value="N">否</option><option value="Y">是</option></select></div>
+                            <div class="col-md-3"><label class="form-label">所屬區域 *</label><select id="district" class="form-select" required><option value="">請選擇</option></select></div>
+                            <div class="col-md-3"><label class="form-label">區域每日上限</label><input type="number" id="districtDailyLimit" class="form-control" readonly style="background:#eef3e9;"></div>
+                            <div class="col-md-4"><label class="form-label">聯絡人 *</label><input type="text" id="contactPerson" class="form-control" required></div>
+                            <div class="col-md-4"><label class="form-label">聯絡電話 *</label><input type="tel" id="telephone" class="form-control" required></div>
+                            <div class="col-md-4"><label class="form-label">電子郵件 *</label><input type="email" id="email" class="form-control" required></div>
+                            <div class="col-12"><button type="submit" class="btn btn-success w-100 py-2" style="background:#3f6e37; border-radius:40px;">✅ 儲存車輛資料</button></div>
                         </div>
                     </form>
                 </div>
             </div>
             
             <div id="batchSection" style="display: none;" class="card-custom card">
-                <div class="card-header-custom">📁 批量操作（Excel 上傳）凌晨配額自動校驗</div>
+                <div class="card-header-custom">📁 批量操作</div>
                 <div class="card-body p-4">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-4"><label class="form-label fw-semibold">批量上傳 Excel 檔案</label><input type="file" id="excelFile" class="form-control" accept=".xlsx, .xls, .csv"></div>
-                        <div class="col-md-3"><button onclick="batchUpload()" class="btn btn-outline-primary w-100" style="border-radius: 40px;"><i class="fas fa-upload me-1"></i> 上傳並合併</button></div>
-                        <div class="col-md-3"><button onclick="downloadTemplate()" class="btn btn-outline-secondary w-100" style="border-radius: 40px;"><i class="fas fa-download me-1"></i> 下載範本(.xlsx)</button></div>
-                        <div class="col-md-2"><div id="batchResult" class="alert alert-success mt-2 mt-md-0" style="display:none; padding:0.5rem 1rem;"></div></div>
+                    <div class="row g-3">
+                        <div class="col-md-4"><input type="file" id="excelFile" class="form-control" accept=".xlsx, .xls"></div>
+                        <div class="col-md-3"><button onclick="batchUpload()" class="btn btn-outline-primary w-100">上傳</button></div>
+                        <div class="col-md-3"><button onclick="downloadTemplate()" class="btn btn-outline-secondary w-100">下載範本</button></div>
                     </div>
-                    <div class="form-text small mt-2">📌 範本欄位順序：車牌、PGVW、開始日期(YYYY-MM-DD)、有效日期、車輛每日上限、凌晨授權(Y/N)、區域、聯絡人、電話(8位數字)、電子郵件。電話必須為8位數字，所有欄位均需填寫。</div>
                 </div>
             </div>
             
             <div id="midnightQuotaSection" class="card-custom card">
                 <div class="card-header-custom d-flex justify-content-between align-items-center">
-                    <span>🌙 各區凌晨授權車輛配額現況</span>
-                    <button onclick="toggleMidnightTop()" id="midnightTopBtn" class="btn btn-sm btn-success" style="border-radius: 20px; background:#2b7340; border:none;"><i class="fas fa-moon me-1"></i> 凌晨車輛置頂</button>
+                    <span>🌙 各區凌晨授權車輛配額</span>
+                    <button onclick="toggleMidnightTop()" id="midnightTopBtn" class="btn btn-sm" style="border-radius:20px; background:#2b7340; color:white;"><i class="fas fa-moon me-1"></i> 凌晨置頂</button>
                 </div>
-                <div class="card-body p-3" id="midnightQuotaSummary" style="max-height: 200px; overflow-y: auto; background: #fefce8;">
-                    <div class="text-center py-3"><i class="fas fa-spinner fa-pulse me-2"></i> 載入配額數據中...</div>
-                </div>
+                <div class="card-body p-3" id="midnightQuotaSummary"><div class="text-center py-3"><i class="fas fa-spinner fa-pulse"></i> 載入中...</div></div>
             </div>
             
             <div class="card-custom card">
-                <div class="card-header-custom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <span><i class="fas fa-truck me-1"></i> 車輛清單（點擊標題排序）</span>
-                    <span class="badge bg-success" id="recordCount">載入中...</span>
-                </div>
+                <div class="card-header-custom">車輛清單</div>
                 <div class="card-body p-0 table-container" id="tableContainer">
-                    <div class="loading-placeholder"><i class="fas fa-spinner fa-pulse me-2"></i> 正在讀取車輛資料，請稍候...</div>
+                    <div class="loading-placeholder"><i class="fas fa-spinner fa-pulse me-2"></i> 載入車輛資料中...</div>
                 </div>
                 <div id="paginationControls" class="pagination-container" style="display: none;"></div>
             </div>
@@ -361,56 +157,324 @@
     </div>
 </div>
 
-<div id="loadingOverlay" class="loading-overlay"><div class="spinner-border" role="status"></div><div class="loading-text">處理中，請稍後...</div></div>
+<div id="loadingOverlay" class="loading-overlay"><div class="spinner-border"></div><div class="mt-2">處理中...</div></div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbz7CIHyunQagma4_nCYl9bXOpD5EcKTeJ5J57f4E91Jwt-dGEXWoacpGH8XNyohxTi3ow/exec";
-    const DISTRICT_DICTIONARY = { "central & western":"Central & Western","central":"Central & Western","中西區":"Central & Western","wan chai":"Wan Chai","灣仔":"Wan Chai","eastern":"Eastern","東區":"Eastern","southern":"Southern","南區":"Southern","sham shui po":"Sham Shui Po","深水埗":"Sham Shui Po","mong kok":"Mong Kok","旺角":"Mong Kok","yau tsim mong":"Yau Tsim","油尖旺":"Yau Tsim","kowloon city":"Kowloon City","九龍城":"Kowloon City","wong tai sin":"Wong Tai Sin","黃大仙":"Wong Tai Sin","kwun tong":"Kwun Tong","觀塘":"Kwun Tong","tuen mun":"Tuen Mun","屯門":"Tuen Mun","yuen long":"Yuen Long","元朗":"Yuen Long","sha tin":"Sha Tin","沙田":"Sha Tin","kwai tsing":"Kwai Tsing","葵青":"Kwai Tsing","north":"North","北區":"North","tai po":"Tai Po","大埔":"Tai Po","sai kung":"Sai Kung","西貢":"Sai Kung","tsuen wan":"Tsuen Wan","荃灣":"Tsuen Wan","islands":"Islands","離島":"Islands"};
-    function standardizeDistrict(d) { if(!d) return ""; let key=String(d).trim().toLowerCase(); return DISTRICT_DICTIONARY[key]||d; }
-    
-    let currentSession=null, vehiclesData=[], currentRole="fehd", currentUserViewDistricts=[], midnightQuotaMap={}, midnightQuotaDistrictsList=[], sortColumn=-1, sortDirection='asc', isMidnightTopActive=false, currentPage=1, rowsPerPage=50, currentFilteredDataForPaging=[];
-    
-    async function callAPI(action, extra={}) { const res=await fetch(API_URL,{method:'POST',body:JSON.stringify({action,...extra})}); return await res.json(); }
-    function showLoading(show){ document.getElementById('loadingOverlay').style.display=show?'flex':'none'; }
-    function escapeHtml(str){ return str?str.replace(/[&<>]/g, m=> m==='&'?'&amp;': m==='<'?'&lt;':'&gt;'):''; }
-    function getUrlParameter(name){ return new URLSearchParams(window.location.search).get(name); }
-    function switchRole(role){ window.location.href=window.location.pathname+'?role='+role; }
-    function handleEnterKey(e){ if(e.key==='Enter') doLogin(); }
-    
-    const MIDNIGHT_QUOTA_SHEET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vThKueDlAW8Zv2quZY56FWqeWApgRvLjIIXE7c0P05IT3BClyxWypRciJadO7Swu75X_9kAWDNt5vgk/pub?gid=1525879179&single=true&output=csv";
-    async function loadMidnightQuotaFromSheet(){ try{ const res=await fetch(MIDNIGHT_QUOTA_SHEET_URL); const txt=await res.text(); const rows=txt.split('\n'); let quota={}, list=[]; for(let i=1;i<rows.length;i++){ let row=rows[i].split(','); if(row.length>=2){ let d=row[0].trim().replace(/^["']|["']$/g,''); let l=parseInt(row[1].trim().replace(/^["']|["']$/g,'')); if(d&&!isNaN(l)){ quota[d]=l; list.push(d); } } } midnightQuotaMap=quota; midnightQuotaDistrictsList=list; }catch(e){ midnightQuotaMap={"Sham Shui Po":5,"Mong Kok":8,"Yau Tsim":4,"Central & Western":5,"Kowloon City":2}; midnightQuotaDistrictsList=Object.keys(midnightQuotaMap); } }
-    function getDistrictQuotaLimit(district){ let std=standardizeDistrict(district); return midnightQuotaMap[std]!==undefined?midnightQuotaMap[std]:null; }
-    function isDistrictInQuotaTable(district){ return midnightQuotaMap[standardizeDistrict(district)]!==undefined; }
-    function checkMidnightQuotaViolation(district,setMidnightY,excludePlate,allVehicles){ if(setMidnightY!=='Y') return {allowed:true}; if(!isDistrictInQuotaTable(district)) return {allowed:false, message:`❌ 區域「${district}」不在凌晨配額管制範圍內`}; let std=standardizeDistrict(district); let limit=getDistrictQuotaLimit(std); if(limit===null) return {allowed:false, message:`無配額上限`}; let today=new Date().toISOString().split('T')[0]; let currentCount=allVehicles.filter(v=>standardizeDistrict(v.district)===std && v.midnight==='Y' && (v.expiryDate?.split('T')[0]||'')>=today).length; if(excludePlate&&allVehicles.find(v=>v.plate===excludePlate&&v.midnight==='Y')) currentCount--; if(currentCount>=limit) return {allowed:false, message:`❌ ${std} 凌晨授權車輛已達上限 (${currentCount}/${limit})`}; return {allowed:true}; }
-    
-    async function loadVehicles(force=false){ if(!currentSession) return; showLoading(true); try{ const res=await callAPI('getVehicles',{session:currentSession}); if(res.success&&res.data){ vehiclesData=res.data; localStorage.setItem('vehicles_cache_'+currentSession.userId,JSON.stringify(vehiclesData)); filterTable(); updateMidnightQuotaPanel(); } else if(!vehiclesData.length){ document.getElementById('tableContainer').innerHTML='<div class="loading-placeholder">暫無車輛資料</div>'; } }catch(e){ console.error(e); }finally{ showLoading(false); } }
-    
-    function filterTable(){ if(!vehiclesData) return; let filtered=[...vehiclesData]; if(currentUserViewDistricts!=='all'&&Array.isArray(currentUserViewDistricts)&&currentUserViewDistricts.length){ filtered=filtered.filter(v=>currentUserViewDistricts.some(ud=>standardizeDistrict(ud)===standardizeDistrict(v.district))); } const kw=document.getElementById('searchInput')?.value.toLowerCase(); if(kw) filtered=filtered.filter(v=>v.plate?.toLowerCase().includes(kw)||v.district?.toLowerCase().includes(kw)||v.contactPerson?.toLowerCase().includes(kw)||v.telephone?.includes(kw)); if(isMidnightTopActive) filtered.sort((a,b)=>(b.midnight==='Y'?1:0)-(a.midnight==='Y'?1:0)); else if(sortColumn!==-1){ filtered.sort((a,b)=>{ let va,vb; switch(sortColumn){ case 0: va=a.plate||''; vb=b.plate||''; break; case 1: va=Number(a.pgvw)||0; vb=Number(b.pgvw)||0; break; case 2: va=a.startDate||''; vb=b.startDate||''; break; case 3: va=a.expiryDate||''; vb=b.expiryDate||''; break; case 4: va=Number(a.vehicleDailyLimit)||0; vb=Number(b.vehicleDailyLimit)||0; break; case 5: va=a.midnight==='Y'?1:0; vb=b.midnight==='Y'?1:0; break; case 6: va=a.district||''; vb=b.district||''; break; case 7: va=Number(a.districtDailyLimit)||0; vb=Number(b.districtDailyLimit)||0; break; case 8: va=a.contactPerson||''; vb=b.contactPerson||''; break; case 9: va=a.telephone||''; vb=b.telephone||''; break; case 10: va=a.email||''; vb=b.email||''; break; default: va=''; vb=''; } if(sortColumn===1||sortColumn===4||sortColumn===7||sortColumn===5) return sortDirection==='asc'?va-vb:vb-va; if(typeof va==='string') va=va.toLowerCase(); if(typeof vb==='string') vb=vb.toLowerCase(); if(va<vb) return sortDirection==='asc'?-1:1; if(va>vb) return sortDirection==='asc'?1:-1; return 0; }); } currentFilteredDataForPaging=filtered; currentPage=1; renderTablePage(); }
-    
-    function renderTablePage(){ const start=(currentPage-1)*rowsPerPage, pageData=currentFilteredDataForPaging.slice(start,start+rowsPerPage); const tbody=document.getElementById('vehicleList'); if(!tbody) return; if(!pageData.length){ document.getElementById('tableContainer').innerHTML=`<table class="table"><tbody><tr><td colspan="12" class="text-center text-muted py-4">暫無符合車輛</td></tr></tbody></table>`; document.getElementById('recordCount').innerText="0 筆"; document.getElementById('paginationControls').style.display='none'; return; } let html=`<table class="table table-bordered table-hover mb-0"><thead><tr>${['車牌','PGVW','開始日期','有效日期','車輛每日上限','凌晨','區域','區域每日上限','聯絡人','電話','電郵','操作'].map((h,i)=>`<th class="sortable-header" onclick="sortTable(${i})">${h}</th>`).join('')}</tr></thead><tbody>`; pageData.forEach(v=>{ html+=`<tr><td><strong>${escapeHtml(v.plate)}</strong></td><td>${v.pgvw}</td><td>${v.startDate?.split('T')[0]||'-'}</td><td>${v.expiryDate?.split('T')[0]||'-'}</td><td>${v.vehicleDailyLimit||5}</td><td>${v.midnight==='Y'?'✅ 是':'❌ 否'}</td><td>${escapeHtml(v.district)}</td><td>${v.districtDailyLimit||0}</td><td>${escapeHtml(v.contactPerson)||'-'}</td><td>${escapeHtml(v.telephone)||'-'}</td><td>${escapeHtml(v.email)||'-'}</td><td>${currentRole==='fehd'?`<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate.replace(/'/g,"\\'")}')">刪除</button>`:'🔍 唯讀'}</td></tr>`; }); html+=`</tbody></table>`; document.getElementById('tableContainer').innerHTML=html; document.getElementById('recordCount').innerText=`${currentFilteredDataForPaging.length} 筆`; const totalPages=Math.ceil(currentFilteredDataForPaging.length/rowsPerPage); const pc=document.getElementById('paginationControls'); if(totalPages<=1){ pc.style.display='none'; }else{ pc.style.display='flex'; let btns=`<span class="pagination-info">共 ${currentFilteredDataForPaging.length} 筆</span><button class="pagination-btn" onclick="goToPage(1)" ${currentPage===1?'disabled':''}>⏮</button><button class="pagination-btn" onclick="goToPage(${currentPage-1})" ${currentPage===1?'disabled':''}>◀</button>`; for(let i=Math.max(1,currentPage-2);i<=Math.min(totalPages,currentPage+2);i++) btns+=`<button class="pagination-btn ${i===currentPage?'active-page':''}" onclick="goToPage(${i})">${i}</button>`; btns+=`<button class="pagination-btn" onclick="goToPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>▶</button><button class="pagination-btn" onclick="goToPage(${totalPages})" ${currentPage===totalPages?'disabled':''}>⏭</button>`; pc.innerHTML=btns; } }
-    
-    function goToPage(p){ currentPage=Math.max(1,Math.min(Math.ceil(currentFilteredDataForPaging.length/rowsPerPage),p)); renderTablePage(); }
-    function sortTable(col){ if(sortColumn===col) sortDirection=sortDirection==='asc'?'desc':'asc'; else{ sortColumn=col; sortDirection='asc'; } isMidnightTopActive=false; filterTable(); }
-    function toggleMidnightTop(){ isMidnightTopActive=!isMidnightTopActive; sortColumn=-1; filterTable(); document.getElementById('midnightTopBtn').innerHTML=isMidnightTopActive?'<i class="fas fa-sun me-1"></i> 取消置頂':'<i class="fas fa-moon me-1"></i> 凌晨車輛置頂'; }
-    
-    function updateMidnightQuotaPanel(){ const container=document.getElementById('midnightQuotaSummary'); if(!container) return; let allowed=[]; if(currentUserViewDistricts==='all') allowed=[...midnightQuotaDistrictsList]; else if(Array.isArray(currentUserViewDistricts)) allowed=currentUserViewDistricts.filter(d=>midnightQuotaMap[standardizeDistrict(d)]); if(allowed.length===0){ container.innerHTML='<div class="text-muted small">無權限查看區域配額</div>'; return; } let today=new Date().toISOString().split('T')[0]; let active=vehiclesData.filter(v=>(v.expiryDate?.split('T')[0]||'')>=today); let html='<div class="row row-cols-2 row-cols-md-4 g-2">'; for(let d of [...new Set(allowed.map(s=>standardizeDistrict(s)))]){ let limit=getDistrictQuotaLimit(d); if(limit===null) continue; let used=active.filter(v=>standardizeDistrict(v.district)===d&&v.midnight==='Y').length; let percent=Math.min(100,(used/limit)*100); let barColor=used>=limit?'bg-danger':used>=limit*0.8?'bg-warning':'bg-success'; html+=`<div class="col"><div class="card p-2 border-0 shadow-sm quota-card" data-district="${d}"><div class="fw-bold">${d}</div><div>🌙 凌晨配額: ${used}/${limit}</div><div class="progress mt-1" style="height:6px"><div class="progress-bar ${barColor}" style="width:${percent}%"></div></div></div></div>`; } html+='</div>'; container.innerHTML=html; document.querySelectorAll('.quota-card').forEach(c=>c.addEventListener('click',()=>{ let dist=c.getAttribute('data-district'); if(dist){ document.getElementById('searchInput').value=dist; filterTable(); } })); }
-    
-    async function doLogin(){ let userId=document.getElementById('userId').value, pwd=document.getElementById('password').value; if(!userId||!pwd){ alert("請輸入帳號密碼"); return; } showLoading(true); try{ let res=await callAPI('login',{userId,password:pwd}); if(!res.success){ alert("登入失敗:"+res.msg); showLoading(false); return; } currentSession=res.session; if(currentSession.role==='超級管理員') currentSession.viewDistricts="all"; vehiclesData=res.initialVehicles||[]; currentRole=(getUrlParameter('role')==='epd'?'epd':'fehd'); currentUserViewDistricts=currentSession.viewDistricts==="all"?"all":(currentSession.viewDistricts||[]); document.getElementById('loginPage').style.display='none'; document.getElementById('mainPage').style.display='block'; document.getElementById('userInfo').innerHTML=`<span>👤 ${currentSession.userId}</span><span class="role-tag ${currentRole==='fehd'?'role-fehd':'role-weighbridge'} ms-2">${currentRole==='fehd'?'食環署':'環保署'}</span>`; document.getElementById('viewHint').innerHTML=`🔍 可查看區域：<br><strong>${currentUserViewDistricts==='all'?'所有區域 (超級管理員)':currentUserViewDistricts.join('、')}</strong>`; if(currentRole==='fehd'){ document.getElementById('vehicleFormSection').style.display='block'; document.getElementById('batchSection').style.display='block'; let sel=document.getElementById('district'); sel.innerHTML='<option value="">請選擇</option>'; midnightQuotaDistrictsList.forEach(d=>sel.innerHTML+=`<option value="${d}">${d}</option>`); }else{ document.getElementById('vehicleFormSection').style.display='none'; document.getElementById('batchSection').style.display='none'; } filterTable(); updateMidnightQuotaPanel(); loadVehicles(true); }catch(e){ alert("網路錯誤"); }finally{ showLoading(false); } }
-    
-    function logout(){ if(currentSession) localStorage.removeItem('vehicles_cache_'+currentSession.userId); currentSession=null; document.getElementById('loginPage').style.display='flex'; document.getElementById('mainPage').style.display='none'; document.getElementById('password').value=''; loadUserList(); }
-    
-    document.getElementById('vehicleForm')?.addEventListener('submit',async(e)=>{ e.preventDefault(); if(!currentSession||currentRole!=='fehd'){alert("無權限");return;} let plate=document.getElementById('plate').value.trim().toUpperCase(); let pgvw=parseFloat(document.getElementById('pgvw').value); let startDate=document.getElementById('startDate').value; let expiryDate=document.getElementById('expiryDate').value; let vehicleDailyLimit=parseInt(document.getElementById('vehicleDailyLimit').value)||5; let midnight=document.getElementById('midnight').value; let district=standardizeDistrict(document.getElementById('district').value); let contactPerson=document.getElementById('contactPerson').value.trim(); let telephone=document.getElementById('telephone').value.trim(); let email=document.getElementById('email').value.trim(); if(!plate||isNaN(pgvw)||!expiryDate||!district||!contactPerson||!email){ alert("請填寫所有必填欄位"); return; } if(!/^\d{8}$/.test(telephone)){ alert("電話必須為8位數字"); return; } let quotaCheck=checkMidnightQuotaViolation(district,midnight,null,vehiclesData); if(!quotaCheck.allowed){ alert(quotaCheck.message); return; } showLoading(true); try{ let res=await callAPI('addVehicle',{data:{plate,pgvw,startDate,expiryDate,vehicleDailyLimit,midnight,district,contactPerson,telephone,email},session:currentSession}); if(res.success){ alert(res.msg); localStorage.removeItem('vehicles_cache_'+currentSession.userId); await loadVehicles(true); document.getElementById('plate').value=''; document.getElementById('pgvw').value=''; document.getElementById('contactPerson').value=''; document.getElementById('telephone').value=''; document.getElementById('email').value=''; }else alert("失敗:"+res.msg); }catch(err){ alert("錯誤:"+err); }finally{ showLoading(false); } });
-    
-    async function batchUpload(){ if(!currentSession||currentRole!=='fehd'){alert("權限不足");return;} let file=document.getElementById('excelFile').files[0]; if(!file){alert("請選擇檔案");return;} showLoading(true); let reader=new FileReader(); reader.onload=async function(evt){ try{ let wb=XLSX.read(new Uint8Array(evt.target.result),{type:'array'}); let ws=wb.Sheets[wb.SheetNames[0]]; let rows=XLSX.utils.sheet_to_json(ws,{header:1}); let dataList=[]; for(let i=1;i<rows.length;i++){ let r=rows[i]; if(!r[0]) continue; let midnightFlag=String(r[5]||'N').toUpperCase()==='Y'?'Y':'N'; let telephoneRaw=String(r[8]||'').trim(); if(!/^\d{8}$/.test(telephoneRaw)) throw new Error(`第${i+1}行電話號碼格式錯誤必須為8位數字: ${telephoneRaw}`); dataList.push({ plate:String(r[0]).trim().toUpperCase(), pgvw:parseFloat(r[1])||0, startDate:r[2]?new Date(r[2]).toISOString().split('T')[0]:'', expiryDate:r[3]?new Date(r[3]).toISOString().split('T')[0]:'', vehicleDailyLimit:parseInt(r[4])||5, midnight:midnightFlag, district:standardizeDistrict(r[6]), contactPerson:String(r[7]||'').trim(), telephone:telephoneRaw, email:String(r[9]||'').trim() }); } let valid=dataList.filter(d=>d.plate&&d.pgvw>0&&d.expiryDate&&d.district&&d.contactPerson&&d.email); if(!valid.length){alert("無有效資料");showLoading(false);return;} let tempVehicles=[...vehiclesData]; let errors=[]; for(let item of valid){ let v=checkMidnightQuotaViolation(item.district,item.midnight,null,tempVehicles); if(!v.allowed) errors.push(`${item.plate}: ${v.message}`); else tempVehicles.push(item); } if(errors.length){ alert("配額衝突，請調整後再上傳:\n"+errors.join("\n")); showLoading(false); return; } let res=await callAPI('batchUpload',{dataList:valid,session:currentSession}); if(res.success){ localStorage.removeItem('vehicles_cache_'+currentSession.userId); document.getElementById('batchResult').innerHTML=`✅ ${res.msg}`; document.getElementById('batchResult').style.display='block'; await loadVehicles(true); setTimeout(()=>document.getElementById('batchResult').style.display='none',4000); }else alert("上傳失敗:"+res.msg); }catch(err){ alert("解析錯誤:"+err.message); }finally{ showLoading(false); document.getElementById('excelFile').value=''; } }; reader.readAsArrayBuffer(file); }
-    
-    function downloadTemplate(){ let wsData=[["車牌","PGVW","開始日期","有效日期","車輛每日上限","凌晨授權(Y/N)","區域","聯絡人","電話(8位數字)","電子郵件"]]; wsData.push(["AB1234","5.5","2025-01-01","2025-12-31","5","Y","Sham Shui Po","陳先生","23456789","contact@example.com"]); wsData.push(["CD5678","12","2025-02-01","2025-12-31","8","N","Mong Kok","李小姐","98765432","lee@example.com"]); let ws=XLSX.utils.aoa_to_sheet(wsData); let wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"車輛批量範本"); XLSX.writeFile(wb,"車輛批量上傳範本.xlsx"); }
-    
-    async function deleteVehicle(plate){ if(!confirm(`確定刪除 ${plate} 嗎？`)) return; showLoading(true); try{ let res=await callAPI('deleteVehicle',{plate,session:currentSession}); if(res.success){ alert(res.msg); localStorage.removeItem('vehicles_cache_'+currentSession.userId); await loadVehicles(true); }else alert("刪除失敗:"+res.msg); }catch(e){ alert("錯誤"); }finally{ showLoading(false); } }
-    async function exportExcel(){ if(typeof XLSX==='undefined'){alert("函式庫未載入");return;} showLoading(true); try{ let res=await callAPI('getVehicles',{session:currentSession}); if(res.success&&res.data.length){ let sheet=[["車牌","PGVW","開始日期","有效日期","車輛每日上限","凌晨授權","區域","區域每日上限","聯絡人","電話","電郵"]]; res.data.forEach(v=>{ sheet.push([v.plate,v.pgvw,v.startDate?.split('T')[0]||"",v.expiryDate?.split('T')[0]||"",v.vehicleDailyLimit||5,v.midnight==='Y'?"是":"否",v.district,v.districtDailyLimit||0,v.contactPerson||"",v.telephone||"",v.email||""]); }); let ws=XLSX.utils.aoa_to_sheet(sheet); let wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"車輛清單"); XLSX.writeFile(wb,`車輛清單_${new Date().toISOString().split('T')[0]}.xlsx`); }else alert("無資料"); }catch(e){ alert("匯出失敗"); }finally{ showLoading(false); } }
-    async function loadUserList(){ let res=await callAPI('getUserList'); if(res.success&&res.users){ let sel=document.getElementById('userId'); sel.innerHTML='<option value="">-- 請選擇用戶 --</option>'; let filtered=res.users.filter(u=>currentRole==='fehd'?(u.role==='區域主管'||u.role==='超級管理員'):(u.role==='轉運站職員'||u.role==='超級管理員')); filtered.forEach(u=>sel.innerHTML+=`<option value="${u.id}">${u.id}</option>`); } }
-    function initByRole(){ let urlRole=getUrlParameter('role'); currentRole=(urlRole==='epd')?'epd':'fehd'; document.getElementById('loginTitle').innerHTML=currentRole==='fehd'?'食環署車輛管理系統':'環保署車輛管理系統'; document.getElementById('loginBtn').innerHTML=currentRole==='fehd'?'食環署登入':'環保署登入'; loadMidnightQuotaFromSheet().then(()=>loadUserList()); }
-    window.sortTable=sortTable; window.filterTable=filterTable; window.doLogin=doLogin; window.logout=logout; window.batchUpload=batchUpload; window.deleteVehicle=deleteVehicle; window.exportExcel=exportExcel; window.loadVehicles=loadVehicles; window.switchRole=switchRole; window.handleEnterKey=handleEnterKey; window.goToPage=goToPage; window.toggleMidnightTop=toggleMidnightTop; window.downloadTemplate=downloadTemplate;
-    initByRole();
+// 請將下方的 API_URL 替換為您 GAS 部署後的網址
+const API_URL = "YOUR_GAS_WEB_APP_URL_HERE";
+
+const DISTRICT_DICTIONARY = {
+    "central & western":"Central & Western","wan chai":"Wan Chai","eastern":"Eastern","southern":"Southern",
+    "sham shui po":"Sham Shui Po","mong kok":"Mong Kok","yau tsim mong":"Yau Tsim","kowloon city":"Kowloon City",
+    "wong tai sin":"Wong Tai Sin","kwun tong":"Kwun Tong","tuen mun":"Tuen Mun","yuen long":"Yuen Long",
+    "sha tin":"Sha Tin","kwai tsing":"Kwai Tsing","north":"North","tai po":"Tai Po","sai kung":"Sai Kung",
+    "tsuen wan":"Tsuen Wan","islands":"Islands"
+};
+function standardizeDistrict(d) { if(!d) return ""; let key=String(d).trim().toLowerCase(); return DISTRICT_DICTIONARY[key]||d; }
+
+let currentSession=null, vehiclesData=[], currentRole="fehd", currentUserViewDistricts=[], midnightQuotaMap={}, midnightQuotaDistrictsList=[];
+let sortColumn=-1, sortDirection='asc', isMidnightTopActive=false, currentPage=1, rowsPerPage=50, currentFilteredData=[];
+
+async function callAPI(action, extra={}) { const res=await fetch(API_URL,{method:'POST',body:JSON.stringify({action,...extra})}); return await res.json(); }
+function showLoading(show){ document.getElementById('loadingOverlay').style.display=show?'flex':'none'; }
+function escapeHtml(str){ return str?str.replace(/[&<>]/g, m=> m==='&'?'&amp;': m==='<'?'&lt;':'&gt;'):''; }
+function switchRole(role){ window.location.href=window.location.pathname+'?role='+role; }
+function handleEnterKey(e){ if(e.key==='Enter') doLogin(); }
+
+async function loadMidnightQuota(){
+    try{
+        const res=await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vThKueDlAW8Zv2quZY56FWqeWApgRvLjIIXE7c0P05IT3BClyxWypRciJadO7Swu75X_9kAWDNt5vgk/pub?gid=1525879179&single=true&output=csv");
+        const txt=await res.text(); const rows=txt.split('\n');
+        let quota={}, list=[];
+        for(let i=1;i<rows.length;i++){ let r=rows[i].split(','); if(r.length>=2){ let d=r[0].trim().replace(/^["']|["']$/g,''); let l=parseInt(r[1]); if(d&&!isNaN(l)){ quota[d]=l; list.push(d); } } }
+        midnightQuotaMap=quota; midnightQuotaDistrictsList=list;
+    }catch(e){ midnightQuotaMap={"Sham Shui Po":5,"Mong Kok":8,"Yau Tsim":4,"Central & Western":5}; midnightQuotaDistrictsList=Object.keys(midnightQuotaMap); }
+}
+
+function checkMidnightQuota(district, setMidnight, excludePlate, allVehicles){
+    if(setMidnight!=='Y') return {allowed:true};
+    let std=standardizeDistrict(district);
+    let limit=midnightQuotaMap[std];
+    if(!limit) return {allowed:false, message:`區域 ${district} 無配額上限`};
+    let today=new Date().toISOString().split('T')[0];
+    let count=allVehicles.filter(v=>standardizeDistrict(v.district)===std && v.midnight==='Y' && (v.expiryDate?.split('T')[0]||'')>=today).length;
+    if(excludePlate && allVehicles.find(v=>v.plate===excludePlate && v.midnight==='Y')) count--;
+    if(count>=limit) return {allowed:false, message:`${std} 凌晨配額已滿 (${count}/${limit})`};
+    return {allowed:true};
+}
+
+async function loadVehicles(force=false){
+    if(!currentSession) return;
+    showLoading(true);
+    try{
+        const res=await callAPI('getVehicles',{session:currentSession});
+        if(res.success && res.data){ vehiclesData=res.data; filterTable(); updateQuotaPanel(); }
+        else{ document.getElementById('tableContainer').innerHTML='<div class="loading-placeholder">暫無車輛資料</div>'; }
+    }catch(e){ console.error(e); }
+    finally{ showLoading(false); }
+}
+
+function filterTable(){
+    if(!vehiclesData) return;
+    let filtered=[...vehiclesData];
+    if(currentUserViewDistricts!=='all' && Array.isArray(currentUserViewDistricts) && currentUserViewDistricts.length){
+        filtered=filtered.filter(v=>currentUserViewDistricts.some(ud=>standardizeDistrict(ud)===standardizeDistrict(v.district)));
+    }
+    const kw=document.getElementById('searchInput')?.value.toLowerCase();
+    if(kw) filtered=filtered.filter(v=>v.plate?.toLowerCase().includes(kw)||v.district?.toLowerCase().includes(kw));
+    if(isMidnightTopActive) filtered.sort((a,b)=>(b.midnight==='Y'?1:0)-(a.midnight==='Y'?1:0));
+    else if(sortColumn!==-1){
+        filtered.sort((a,b)=>{
+            let va,vb;
+            switch(sortColumn){
+                case 0: va=a.plate||''; vb=b.plate||''; break;
+                case 1: va=Number(a.pgvw)||0; vb=Number(b.pgvw)||0; break;
+                case 5: va=a.midnight==='Y'?1:0; vb=b.midnight==='Y'?1:0; break;
+                case 6: va=a.district||''; vb=b.district||''; break;
+                default: va=a.plate||''; vb=b.plate||'';
+            }
+            if(typeof va==='string'){ va=va.toLowerCase(); vb=vb.toLowerCase(); }
+            if(va<vb) return sortDirection==='asc'?-1:1;
+            if(va>vb) return sortDirection==='asc'?1:-1;
+            return 0;
+        });
+    }
+    currentFilteredData=filtered;
+    currentPage=1;
+    renderTable();
+}
+
+function renderTable(){
+    const start=(currentPage-1)*rowsPerPage;
+    const pageData=currentFilteredData.slice(start,start+rowsPerPage);
+    if(!pageData.length){
+        document.getElementById('tableContainer').innerHTML='<div class="loading-placeholder">暫無符合車輛</div>';
+        document.getElementById('paginationControls').style.display='none';
+        return;
+    }
+    let html=`<table class="table table-bordered mb-0"><thead><tr>${['車牌','PGVW','開始日期','有效日期','每日上限','凌晨','區域','區域上限','聯絡人','電話','電郵','操作'].map((h,i)=>`<th class="sortable-header" onclick="sortTable(${i})">${h}</th>`).join('')}</tr></thead><tbody>`;
+    pageData.forEach(v=>{
+        html+=`<tr>
+            <td><strong>${escapeHtml(v.plate)}</strong></td>
+            <td>${v.pgvw}</td>
+            <td>${v.startDate?.split('T')[0]||'-'}</td>
+            <td>${v.expiryDate?.split('T')[0]||'-'}</td>
+            <td>${v.vehicleDailyLimit||5}</td>
+            <td>${v.midnight==='Y'?'✅ 是':'❌ 否'}</td>
+            <td>${escapeHtml(v.district)}</td>
+            <td>${v.districtDailyLimit||0}</td>
+            <td>${escapeHtml(v.contactPerson)||'-'}</td>
+            <td>${escapeHtml(v.telephone)||'-'}</td>
+            <td>${escapeHtml(v.email)||'-'}</td>
+            <td>${currentRole==='fehd'?`<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate.replace(/'/g,"\\'")}')">刪除</button>`:'🔍 唯讀'}</td>
+        </tr>`;
+    });
+    html+=`</tbody></table>`;
+    document.getElementById('tableContainer').innerHTML=html;
+    const totalPages=Math.ceil(currentFilteredData.length/rowsPerPage);
+    const pc=document.getElementById('paginationControls');
+    if(totalPages<=1){ pc.style.display='none'; return; }
+    pc.style.display='flex';
+    let btns=`<span>共 ${currentFilteredData.length} 筆</span><button class="pagination-btn" onclick="goToPage(1)" ${currentPage===1?'disabled':''}>⏮</button><button class="pagination-btn" onclick="goToPage(${currentPage-1})" ${currentPage===1?'disabled':''}>◀</button>`;
+    for(let i=Math.max(1,currentPage-2);i<=Math.min(totalPages,currentPage+2);i++) btns+=`<button class="pagination-btn ${i===currentPage?'active-page':''}" onclick="goToPage(${i})">${i}</button>`;
+    btns+=`<button class="pagination-btn" onclick="goToPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>▶</button><button class="pagination-btn" onclick="goToPage(${totalPages})" ${currentPage===totalPages?'disabled':''}>⏭</button>`;
+    pc.innerHTML=btns;
+}
+
+function goToPage(p){ currentPage=Math.max(1,Math.min(Math.ceil(currentFilteredData.length/rowsPerPage),p)); renderTable(); }
+function sortTable(col){ if(sortColumn===col) sortDirection=sortDirection==='asc'?'desc':'asc'; else{ sortColumn=col; sortDirection='asc'; } isMidnightTopActive=false; filterTable(); }
+function toggleMidnightTop(){ isMidnightTopActive=!isMidnightTopActive; sortColumn=-1; filterTable(); document.getElementById('midnightTopBtn').innerHTML=isMidnightTopActive?'<i class="fas fa-sun me-1"></i> 取消置頂':'<i class="fas fa-moon me-1"></i> 凌晨置頂'; }
+
+function updateQuotaPanel(){
+    const container=document.getElementById('midnightQuotaSummary');
+    if(!container) return;
+    let allowed=[];
+    if(currentUserViewDistricts==='all') allowed=[...midnightQuotaDistrictsList];
+    else if(Array.isArray(currentUserViewDistricts)) allowed=currentUserViewDistricts.filter(d=>midnightQuotaMap[standardizeDistrict(d)]);
+    if(allowed.length===0){ container.innerHTML='<div class="text-muted">無權限查看</div>'; return; }
+    let today=new Date().toISOString().split('T')[0];
+    let active=vehiclesData.filter(v=>(v.expiryDate?.split('T')[0]||'')>=today);
+    let html='<div class="row row-cols-2 row-cols-md-4 g-2">';
+    for(let d of [...new Set(allowed.map(s=>standardizeDistrict(s)))]){
+        let limit=midnightQuotaMap[d];
+        if(!limit) continue;
+        let used=active.filter(v=>standardizeDistrict(v.district)===d && v.midnight==='Y').length;
+        let percent=Math.min(100,(used/limit)*100);
+        let color=used>=limit?'bg-danger':used>=limit*0.8?'bg-warning':'bg-success';
+        html+=`<div class="col"><div class="card p-2 quota-card" data-district="${d}"><div class="fw-bold">${d}</div><div>🌙 ${used}/${limit}</div><div class="progress mt-1" style="height:6px"><div class="progress-bar ${color}" style="width:${percent}%"></div></div></div></div>`;
+    }
+    html+='</div>';
+    container.innerHTML=html;
+    document.querySelectorAll('.quota-card').forEach(c=>c.addEventListener('click',()=>{ let d=c.dataset.district; if(d){ document.getElementById('searchInput').value=d; filterTable(); } }));
+}
+
+async function doLogin(){
+    let userId=document.getElementById('userId').value, pwd=document.getElementById('password').value;
+    if(!userId||!pwd){ alert("請輸入帳號密碼"); return; }
+    showLoading(true);
+    try{
+        let res=await callAPI('login',{userId,password:pwd});
+        if(!res.success){ alert("登入失敗:"+res.msg); showLoading(false); return; }
+        currentSession=res.session;
+        if(currentSession.role==='超級管理員') currentSession.viewDistricts="all";
+        vehiclesData=res.initialVehicles||[];
+        currentRole=(new URLSearchParams(location.search).get('role')==='epd'?'epd':'fehd');
+        currentUserViewDistricts=currentSession.viewDistricts==="all"?"all":(currentSession.viewDistricts||[]);
+        document.getElementById('loginPage').style.display='none';
+        document.getElementById('mainPage').style.display='block';
+        document.getElementById('userInfo').innerHTML=`<span>👤 ${currentSession.userId}</span><div class="role-tag">${currentRole==='fehd'?'食環署':'環保署'}</div>`;
+        document.getElementById('viewHint').innerHTML=`🔍 可查看區域：<br><strong>${currentUserViewDistricts==='all'?'所有區域':currentUserViewDistricts.join('、')}</strong>`;
+        if(currentRole==='fehd'){
+            document.getElementById('vehicleFormSection').style.display='block';
+            document.getElementById('batchSection').style.display='block';
+            let sel=document.getElementById('district');
+            sel.innerHTML='<option value="">請選擇</option>';
+            midnightQuotaDistrictsList.forEach(d=>sel.innerHTML+=`<option value="${d}">${d}</option>`);
+            // 設定開始日期為今天
+            let today=new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value=today;
+        }
+        filterTable();
+        updateQuotaPanel();
+        loadVehicles(true);
+    }catch(e){ alert("網路錯誤"); }
+    finally{ showLoading(false); }
+}
+
+function logout(){
+    if(currentSession) localStorage.removeItem('vehicles_cache_'+currentSession.userId);
+    currentSession=null;
+    document.getElementById('loginPage').style.display='flex';
+    document.getElementById('mainPage').style.display='none';
+    document.getElementById('password').value='';
+    loadUserList();
+}
+
+document.getElementById('vehicleForm')?.addEventListener('submit',async(e)=>{
+    e.preventDefault();
+    if(!currentSession||currentRole!=='fehd'){alert("無權限");return;}
+    let plate=document.getElementById('plate').value.trim().toUpperCase();
+    let pgvw=parseFloat(document.getElementById('pgvw').value);
+    let startDate=document.getElementById('startDate').value;
+    let expiryDate=document.getElementById('expiryDate').value;
+    let vehicleDailyLimit=parseInt(document.getElementById('vehicleDailyLimit').value)||5;
+    let midnight=document.getElementById('midnight').value;
+    let district=standardizeDistrict(document.getElementById('district').value);
+    let contactPerson=document.getElementById('contactPerson').value.trim();
+    let telephone=document.getElementById('telephone').value.trim();
+    let email=document.getElementById('email').value.trim();
+    if(!plate||isNaN(pgvw)||!expiryDate||!district||!contactPerson||!telephone||!email){ alert("請填寫所有必填欄位"); return; }
+    let quotaCheck=checkMidnightQuota(district,midnight,null,vehiclesData);
+    if(!quotaCheck.allowed){ alert(quotaCheck.message); return; }
+    showLoading(true);
+    try{
+        let res=await callAPI('addVehicle',{data:{plate,pgvw,startDate,expiryDate,vehicleDailyLimit,midnight,district,contactPerson,telephone,email},session:currentSession});
+        if(res.success){ alert(res.msg); await loadVehicles(true);
+            document.getElementById('plate').value=''; document.getElementById('pgvw').value='';
+            document.getElementById('contactPerson').value=''; document.getElementById('telephone').value=''; document.getElementById('email').value='';
+            document.getElementById('expiryDate').value='';
+        }else alert("失敗:"+res.msg);
+    }catch(err){ alert("錯誤:"+err); }
+    finally{ showLoading(false); }
+});
+
+async function batchUpload(){
+    let file=document.getElementById('excelFile').files[0];
+    if(!file){alert("請選擇檔案");return;}
+    showLoading(true);
+    let reader=new FileReader();
+    reader.onload=async function(evt){
+        try{
+            let wb=XLSX.read(new Uint8Array(evt.target.result),{type:'array'});
+            let ws=wb.Sheets[wb.SheetNames[0]];
+            let rows=XLSX.utils.sheet_to_json(ws,{header:1});
+            let dataList=[];
+            for(let i=1;i<rows.length;i++){
+                let r=rows[i];
+                if(!r[0]) continue;
+                dataList.push({
+                    plate:String(r[0]).trim().toUpperCase(), pgvw:parseFloat(r[1])||0,
+                    startDate:r[2]?new Date(r[2]).toISOString().split('T')[0]:'', expiryDate:r[3]?new Date(r[3]).toISOString().split('T')[0]:'',
+                    vehicleDailyLimit:parseInt(r[4])||5, midnight:String(r[5]||'N').toUpperCase()==='Y'?'Y':'N',
+                    district:standardizeDistrict(r[6]), contactPerson:String(r[7]||'').trim(),
+                    telephone:String(r[8]||'').trim(), email:String(r[9]||'').trim()
+                });
+            }
+            let valid=dataList.filter(d=>d.plate&&d.pgvw>0&&d.expiryDate&&d.district&&d.contactPerson&&d.telephone&&d.email);
+            if(!valid.length){alert("無有效資料");showLoading(false);return;}
+            let tempVehicles=[...vehiclesData], errors=[];
+            for(let item of valid){
+                let v=checkMidnightQuota(item.district,item.midnight,null,tempVehicles);
+                if(!v.allowed) errors.push(`${item.plate}: ${v.message}`);
+                else tempVehicles.push(item);
+            }
+            if(errors.length){ alert("配額衝突:\n"+errors.join("\n")); showLoading(false); return; }
+            let res=await callAPI('batchUpload',{dataList:valid,session:currentSession});
+            if(res.success){ alert(res.msg); await loadVehicles(true); }
+            else alert("失敗:"+res.msg);
+        }catch(err){ alert("錯誤:"+err.message); }
+        finally{ showLoading(false); document.getElementById('excelFile').value=''; }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function downloadTemplate(){
+    let wsData=[["車牌","PGVW","開始日期","有效日期","車輛每日上限","凌晨授權(Y/N)","區域","聯絡人","電話","電子郵件"]];
+    wsData.push(["AB1234","5.5","2025-01-01","2025-12-31","5","Y","Sham Shui Po","陳先生","23456789","test@example.com"]);
+    let ws=XLSX.utils.aoa_to_sheet(wsData); let wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"範本");
+    XLSX.writeFile(wb,"車輛批量上傳範本.xlsx");
+}
+
+async function deleteVehicle(plate){
+    if(!confirm(`刪除 ${plate}？`)) return;
+    showLoading(true);
+    try{
+        let res=await callAPI('deleteVehicle',{plate,session:currentSession});
+        if(res.success){ alert(res.msg); await loadVehicles(true); }
+        else alert("失敗:"+res.msg);
+    }catch(e){ alert("錯誤"); }
+    finally{ showLoading(false); }
+}
+
+async function exportExcel(){
+    if(typeof XLSX==='undefined'){alert("函式庫未載入");return;}
+    showLoading(true);
+    try{
+        let res=await callAPI('getVehicles',{session:currentSession});
+        if(res.success&&res.data.length){
+            let sheet=[["車牌","PGVW","開始日期","有效日期","每日上限","凌晨","區域","區域上限","聯絡人","電話","電郵"]];
+            res.data.forEach(v=>{ sheet.push([v.plate,v.pgvw,v.startDate?.split('T')[0]||"",v.expiryDate?.split('T')[0]||"",v.vehicleDailyLimit||5,v.midnight==='Y'?"是":"否",v.district,v.districtDailyLimit||0,v.contactPerson||"",v.telephone||"",v.email||""]); });
+            let ws=XLSX.utils.aoa_to_sheet(sheet); let wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"車輛清單");
+            XLSX.writeFile(wb,`車輛清單_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }else alert("無資料");
+    }catch(e){ alert("匯出失敗"); }
+    finally{ showLoading(false); }
+}
+
+async function loadUserList(){
+    let res=await callAPI('getUserList');
+    if(res.success&&res.users){
+        let sel=document.getElementById('userId');
+        sel.innerHTML='<option value="">-- 請選擇用戶 --</option>';
+        let filtered=res.users.filter(u=>currentRole==='fehd'?(u.role==='區域主管'||u.role==='超級管理員'):(u.role==='轉運站職員'||u.role==='超級管理員'));
+        filtered.forEach(u=>sel.innerHTML+=`<option value="${u.id}">${u.id}</option>`);
+    }
+}
+
+async function init(){
+    let urlRole=new URLSearchParams(location.search).get('role');
+    currentRole=(urlRole==='epd')?'epd':'fehd';
+    document.getElementById('loginTitle').innerHTML=currentRole==='fehd'?'食環署車輛管理系統':'環保署車輛管理系統';
+    document.getElementById('loginBtn').innerHTML=currentRole==='fehd'?'食環署登入':'環保署登入';
+    await loadMidnightQuota();
+    await loadUserList();
+}
+
+window.sortTable=sortTable; window.filterTable=filterTable; window.doLogin=doLogin; window.logout=logout;
+window.batchUpload=batchUpload; window.deleteVehicle=deleteVehicle; window.exportExcel=exportExcel;
+window.loadVehicles=loadVehicles; window.switchRole=switchRole; window.handleEnterKey=handleEnterKey;
+window.goToPage=goToPage; window.toggleMidnightTop=toggleMidnightTop; window.downloadTemplate=downloadTemplate;
+init();
 </script>
 </body>
 </html>
