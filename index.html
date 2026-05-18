@@ -194,10 +194,6 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.1);
         }
         
-        .hidden-section {
-            display: none !important;
-        }
-        
         .pagination-container {
             display: flex;
             justify-content: flex-end;
@@ -303,6 +299,7 @@
                 </div>
             </div>
             
+            <!-- 食環署專用：新增車輛表單 -->
             <div id="vehicleFormSection" style="display: none;" class="card-custom card">
                 <div class="card-header-custom">➕ 新增車輛（食環署權限）<span class="badge bg-warning text-dark ms-2">凌晨車輛受區域配額限制</span></div>
                 <div class="card-body p-4">
@@ -325,6 +322,7 @@
                 </div>
             </div>
             
+            <!-- 食環署專用：批量上傳 -->
             <div id="batchSection" style="display: none;" class="card-custom card">
                 <div class="card-header-custom">📁 批量操作（Excel 上傳）凌晨配額自動校驗</div>
                 <div class="card-body p-4">
@@ -338,6 +336,7 @@
                 </div>
             </div>
             
+            <!-- 配額面板 -->
             <div id="midnightQuotaSection" class="card-custom card">
                 <div class="card-header-custom d-flex justify-content-between align-items-center">
                     <span>🌙 各區凌晨授權車輛配額現況</span>
@@ -350,6 +349,7 @@
                 </div>
             </div>
             
+            <!-- 車輛清單表格 -->
             <div class="card-custom card">
                 <div class="card-header-custom d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <span><i class="fas fa-truck me-1"></i> 車輛清單（點擊標題可以排序）</span>
@@ -368,35 +368,25 @@
 
 <script>
     // ======================= 請修改此處為您的 GAS 網址 =======================
-    const API_URL = "https://script.google.com/macros/s/AKfycbzIMLi45V3zS-lsmZZ_ty7Mhl2GltHxulCB4m8EgK-iFMWclVuSO8RRCnydem2pyJTjWw/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzmbQ6lJJMP0pjw12qizc0iYJ37Ez82j8wbB2EaJl2WPxuHTvlY37217-PFv6aEKSFu6A/exec";
     
     // ======================= 全港區域對照表 =======================
     const DISTRICT_DICTIONARY = {
-        "central & western": "Central & Western", "central": "Central & Western", "中西區": "Central & Western", "中西区": "Central & Western",
-        "wan chai": "Wan Chai", "wanchai": "Wan Chai", "灣仔": "Wan Chai", "湾仔": "Wan Chai",
-        "eastern": "Eastern", "東區": "Eastern", "东区": "Eastern",
-        "southern": "Southern", "南區": "Southern", "南区": "Southern",
-        "sham shui po": "Sham Shui Po", "ssp": "Sham Shui Po", "深水埗": "Sham Shui Po",
-        "mong kok": "Mong Kok", "mk": "Mong Kok", "旺角": "Mong Kok",
-        "yau tsim": "Yau Tsim", "油尖": "Yau Tsim", "yau tsim mong": "Yau Tsim", "ytm": "Yau Tsim", "油尖旺": "Yau Tsim",
-        "kowloon city": "Kowloon City", "kc": "Kowloon City", "九龍城": "Kowloon City", "九龙城": "Kowloon City",
-        "wong tai sin": "Wong Tai Sin", "wts": "Wong Tai Sin", "黃大仙": "Wong Tai Sin", "黄大仙": "Wong Tai Sin",
-        "kwun tong": "Kwun Tong", "kt": "Kwun Tong", "觀塘": "Kwun Tong", "观塘": "Kwun Tong",
-        "tuen mun": "Tuen Mun", "tm": "Tuen Mun", "屯門": "Tuen Mun", "屯门": "Tuen Mun",
-        "yuen long": "Yuen Long", "yl": "Yuen Long", "元朗": "Yuen Long",
-        "sha tin": "Sha Tin", "shatin": "Sha Tin", "st": "Sha Tin", "沙田": "Sha Tin",
-        "kwai tsing": "Kwai Tsing", "kwaichung": "Kwai Tsing", "葵青": "Kwai Tsing", "葵涌": "Kwai Tsing",
-        "north": "North", "北區": "North", "北区": "North",
-        "tai po": "Tai Po", "tp": "Tai Po", "大埔": "Tai Po",
-        "sai kung": "Sai Kung", "sk": "Sai Kung", "西貢": "Sai Kung", "西贡": "Sai Kung",
-        "tsuen wan": "Tsuen Wan", "tw": "Tsuen Wan", "荃灣": "Tsuen Wan", "荃湾": "Tsuen Wan",
-        "islands": "Islands", "離島": "Islands", "离岛": "Islands",
-        "hk, kln & n.t.": "HK, KLN & NT", "hk, kln & nt": "HK, KLN & NT", "全港": "HK, KLN & NT"
+        "central & western": "Central & Western", "central": "Central & Western", "中西區": "Central & Western",
+        "wan chai": "Wan Chai", "灣仔": "Wan Chai", "eastern": "Eastern", "東區": "Eastern",
+        "southern": "Southern", "南區": "Southern", "sham shui po": "Sham Shui Po", "深水埗": "Sham Shui Po",
+        "mong kok": "Mong Kok", "旺角": "Mong Kok", "yau tsim mong": "Yau Tsim", "油尖旺": "Yau Tsim",
+        "kowloon city": "Kowloon City", "九龍城": "Kowloon City", "wong tai sin": "Wong Tai Sin", "黃大仙": "Wong Tai Sin",
+        "kwun tong": "Kwun Tong", "觀塘": "Kwun Tong", "tuen mun": "Tuen Mun", "屯門": "Tuen Mun",
+        "yuen long": "Yuen Long", "元朗": "Yuen Long", "sha tin": "Sha Tin", "沙田": "Sha Tin",
+        "kwai tsing": "Kwai Tsing", "葵青": "Kwai Tsing", "north": "North", "北區": "North",
+        "tai po": "Tai Po", "大埔": "Tai Po", "sai kung": "Sai Kung", "西貢": "Sai Kung",
+        "tsuen wan": "Tsuen Wan", "荃灣": "Tsuen Wan", "islands": "Islands", "離島": "Islands"
     };
 
     function standardizeDistrict(districtName) {
         if (!districtName) return "";
-        const key = String(districtName).trim().toLowerCase().replace(/\s+/g, ' ');
+        const key = String(districtName).trim().toLowerCase();
         return DISTRICT_DICTIONARY[key] || districtName;
     }
     
@@ -475,6 +465,8 @@
     let currentRole = "fehd";
     let vehiclesData = [];
     let currentUserViewDistricts = [];
+    let currentUserDistrict = null;  // 食環署用戶的所屬區域（非超級管理員）
+    let isSuperAdmin = false;         // 是否為超級管理員
     let sortColumn = -1;
     let sortDirection = 'asc';
     let isMidnightTopActive = false;
@@ -513,34 +505,42 @@
     function renderCurrentPageData() {
         const start = (currentPage - 1) * rowsPerPage;
         const pageData = currentFilteredDataForPaging.slice(start, start + rowsPerPage);
-        const tbody = document.getElementById('vehicleList');
+        const container = document.getElementById('tableContainer');
         const recordSpan = document.getElementById('recordCount');
         if (!pageData.length) { 
-            if (tbody) tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">暫無符合車輛</td></tr>';
+            container.innerHTML = '<div class="loading-placeholder">暫無符合車輛</div>';
             if (recordSpan) recordSpan.innerText = "0 筆";
             renderPagination(0, 1);
             return; 
         }
-        if (tbody) {
-            tbody.innerHTML = pageData.map(v => { 
-                const startDate = v.startDate ? v.startDate.split('T')[0] : '-'; 
-                const expiry = v.expiryDate ? v.expiryDate.split('T')[0] : '-'; 
-                return `<tr>
-                    <td><strong>${escapeHtml(v.plate)}</strong></td>
-                    <td>${v.pgvw}</td>
-                    <td>${startDate}</td>
-                    <td>${expiry}</td>
-                    <td>${v.vehicleDailyLimit || 5}</td>
-                    <td>${v.midnight === 'Y' ? '✅ 是' : '❌ 否'}</td>
-                    <td>${escapeHtml(v.district)}</td>
-                    <td>${v.districtDailyLimit || 0}</td>
-                    <td>${escapeHtml(v.contactPerson) || '-'}</td>
-                    <td>${escapeHtml(v.telephone) || '-'}</td>
-                    <td>${escapeHtml(v.email) || '-'}</td>
-                    <td>${currentRole === 'fehd' ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate.replace(/'/g, "\\'")}')">刪除</button>` : '🔍 唯讀'}</td>
-                </tr>`;
-            }).join('');
-        }
+        
+        let html = `<table class="table table-bordered table-hover mb-0"><thead><tr>`;
+        const headers = ['車牌', 'PGVW', '開始日期', '有效日期', '每日上限', '凌晨', '區域', '區域上限', '聯絡人', '電話', '電郵', '操作'];
+        headers.forEach((h, i) => {
+            html += `<th class="sortable-header" onclick="sortTable(${i})">${h}</th>`;
+        });
+        html += `</tr></thead><tbody>`;
+        
+        pageData.forEach(v => { 
+            const startDate = v.startDate ? v.startDate.split('T')[0] : '-'; 
+            const expiry = v.expiryDate ? v.expiryDate.split('T')[0] : '-'; 
+            html += `<tr>
+                <td><strong>${escapeHtml(v.plate)}</strong></td>
+                <td>${v.pgvw}</td>
+                <td>${startDate}</td>
+                <td>${expiry}</td>
+                <td>${v.vehicleDailyLimit || 5}</td>
+                <td>${v.midnight === 'Y' ? '✅ 是' : '❌ 否'}</td>
+                <td>${escapeHtml(v.district)}</td>
+                <td>${v.districtDailyLimit || 0}</td>
+                <td>${escapeHtml(v.contactPerson) || '-'}</td>
+                <td>${escapeHtml(v.telephone) || '-'}</td>
+                <td>${escapeHtml(v.email) || '-'}</td>
+                <td>${currentRole === 'fehd' && !isSuperAdmin && v.district === currentUserDistrict ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate.replace(/'/g, "\\'")}')">刪除</button>` : (currentRole === 'fehd' && isSuperAdmin ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${v.plate.replace(/'/g, "\\'")}')">刪除</button>` : '🔍 唯讀')}</td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+        container.innerHTML = html;
         if (recordSpan) recordSpan.innerText = `${currentFilteredDataForPaging.length} 筆`;
         renderPagination(currentFilteredDataForPaging.length, currentPage);
     }
@@ -561,13 +561,16 @@
         const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || ''; 
         let filteredData = [...vehiclesData];
         
-        if (currentUserViewDistricts !== 'all' && Array.isArray(currentUserViewDistricts) && currentUserViewDistricts.length > 0) {
-            filteredData = filteredData.filter(v => {
-                const stdVehicleDistrict = standardizeDistrict(v.district);
-                return currentUserViewDistricts.some(userDistrict => 
-                    standardizeDistrict(userDistrict) === stdVehicleDistrict
-                );
-            });
+        // 根據用戶權限過濾車輛
+        if (currentRole === 'fehd' && !isSuperAdmin && currentUserDistrict) {
+            // 食環署一般主管：只顯示自己所屬區域的車輛
+            filteredData = filteredData.filter(v => standardizeDistrict(v.district) === standardizeDistrict(currentUserDistrict));
+        } else if (currentRole === 'epd') {
+            // 環保署：顯示所有區域
+            // 不過濾
+        } else if (isSuperAdmin) {
+            // 超級管理員：顯示所有區域
+            // 不過濾
         }
         
         if (searchTerm) {
@@ -594,10 +597,9 @@
                     case 4: valA = Number(a.vehicleDailyLimit) || 0; valB = Number(b.vehicleDailyLimit) || 0; break; 
                     case 5: valA = (a.midnight === 'Y') ? 1 : 0; valB = (b.midnight === 'Y') ? 1 : 0; break; 
                     case 6: valA = a.district || ''; valB = b.district || ''; break; 
-                    case 7: valA = Number(a.districtDailyLimit) || 0; valB = Number(b.districtDailyLimit) || 0; break;
                     default: valA = ''; valB = '';
                 }
-                if (sortColumn === 1 || sortColumn === 4 || sortColumn === 7 || sortColumn === 5) {
+                if (sortColumn === 1 || sortColumn === 4 || sortColumn === 5) {
                     return sortDirection === 'asc' ? valA - valB : valB - valA;
                 }
                 if (typeof valA === 'string') valA = valA.toLowerCase();
@@ -639,16 +641,15 @@
         const activeVehicles = vehiclesData.filter(v => (v.expiryDate?.split('T')[0] || '') >= today);
         
         let allowedDistricts = [];
-        if (currentUserViewDistricts === 'all') {
+        if (isSuperAdmin) {
             allowedDistricts = [...midnightQuotaDistrictsList];
-        } else if (Array.isArray(currentUserViewDistricts) && currentUserViewDistricts.length > 0) {
-            allowedDistricts = currentUserViewDistricts.filter(district => {
-                const stdDistrict = standardizeDistrict(district);
-                return midnightQuotaMap[stdDistrict] !== undefined;
-            });
+        } else if (currentRole === 'epd') {
+            allowedDistricts = [...midnightQuotaDistrictsList];
+        } else if (currentRole === 'fehd' && currentUserDistrict) {
+            allowedDistricts = [standardizeDistrict(currentUserDistrict)];
         }
         
-        allowedDistricts = [...new Set(allowedDistricts.map(d => standardizeDistrict(d)))];
+        allowedDistricts = [...new Set(allowedDistricts.filter(d => midnightQuotaMap[d] !== undefined))];
         
         if (allowedDistricts.length === 0) {
             container.innerHTML = '<div class="text-muted small text-center py-3">無權限查看區域配額</div>';
@@ -720,9 +721,11 @@
             
             currentSession = result.session;
             
-            if (result.session.role === '超級管理員') {
-                result.session.viewDistricts = "all";
-            }
+            // 判斷是否為超級管理員
+            isSuperAdmin = (result.session.role === '超級管理員');
+            
+            // 儲存用戶所屬區域（食環署一般主管用）
+            currentUserDistrict = result.session.district || null;
             
             vehiclesData = result.initialVehicles || [];
             
@@ -731,35 +734,64 @@
             
             let roleClass = currentRole === 'fehd' ? 'role-fehd' : 'role-weighbridge';
             let roleName = currentRole === 'fehd' ? '食環署' : '環保署';
+            if (isSuperAdmin) roleName += ' (超級管理員)';
             document.getElementById('userInfo').innerHTML = `
                 <span class="d-block mb-1">👤 ${result.session.userId}</span>
                 <span class="role-tag ${roleClass}" style="margin-left: 0; padding: 4px 14px; font-size: 0.75rem; display: inline-block;">${roleName}</span>
             `;
             
-            if (result.session.viewDistricts === "all") {
-                currentUserViewDistricts = "all";
+            // 設定權限提示
+            if (isSuperAdmin) {
                 document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<br><strong>所有區域 (超級管理員)</strong>`;
-            } else {
-                currentUserViewDistricts = result.session.viewDistricts || [];
-                const viewText = currentUserViewDistricts.join("、");
-                document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<br><strong>${viewText}</strong>`;
+            } else if (currentRole === 'epd') {
+                document.getElementById('viewHint').innerHTML = `🔍 環保署職員：<br><strong>可查看所有區域車輛</strong>`;
+            } else if (currentRole === 'fehd' && currentUserDistrict) {
+                document.getElementById('viewHint').innerHTML = `🔍 您可查看的區域：<br><strong>${currentUserDistrict}</strong>`;
             }
             document.getElementById('viewHint').style.lineHeight = "1.5";
             document.getElementById('viewHint').style.wordWrap = "break-word";
             document.getElementById('viewHint').style.whiteSpace = "normal";
             
+            // 設定食環署專用表單
             if (currentRole === 'fehd') {
-                const quotaDistricts = midnightQuotaDistrictsList;
+                document.getElementById('vehicleFormSection').style.display = 'block';
+                document.getElementById('batchSection').style.display = 'block';
+                
                 const districtSelect = document.getElementById('district');
                 if (districtSelect) {
                     districtSelect.innerHTML = '<option value="">請選擇</option>';
-                    quotaDistricts.forEach(d => { 
-                        districtSelect.innerHTML += `<option value="${d}">${d}</option>`; 
-                    });
+                    
+                    let allowedDistricts = [];
+                    if (isSuperAdmin) {
+                        allowedDistricts = midnightQuotaDistrictsList;
+                    } else if (currentUserDistrict) {
+                        // 一般主管：只顯示自己所屬區域
+                        const stdDistrict = standardizeDistrict(currentUserDistrict);
+                        if (midnightQuotaMap[stdDistrict] !== undefined) {
+                            allowedDistricts = [stdDistrict];
+                        }
+                    }
+                    
+                    if (allowedDistricts.length === 0) {
+                        districtSelect.innerHTML = '<option value="">暫無可用區域</option>';
+                    } else {
+                        allowedDistricts.forEach(d => { 
+                            districtSelect.innerHTML += `<option value="${d}" ${!isSuperAdmin && d === standardizeDistrict(currentUserDistrict) ? 'selected' : ''}>${d}</option>`; 
+                        });
+                    }
+                    // 如果不是超級管理員，禁用下拉選單（只能選自己的區域）
+                    if (!isSuperAdmin && districtSelect) {
+                        districtSelect.disabled = true;
+                    } else {
+                        districtSelect.disabled = false;
+                    }
                 }
                 // 設定開始日期為今天
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('startDate').value = today;
+            } else {
+                document.getElementById('vehicleFormSection').style.display = 'none';
+                document.getElementById('batchSection').style.display = 'none';
             }
             
             filterTable();
@@ -789,7 +821,11 @@
         if (!currentSession || currentRole !== 'fehd') { alert("您沒有權限編輯車輛"); return; }
         
         const plate = document.getElementById('plate').value.trim().toUpperCase();
-        const rawDistrict = document.getElementById('district').value;
+        let rawDistrict = document.getElementById('district').value;
+        // 如果不是超級管理員，強制使用用戶所屬區域
+        if (!isSuperAdmin && currentUserDistrict) {
+            rawDistrict = currentUserDistrict;
+        }
         const district = standardizeDistrict(rawDistrict);
         const midnight = document.getElementById('midnight').value;
         const contactPerson = document.getElementById('contactPerson').value.trim();
@@ -857,6 +893,10 @@
                 for (let i = 1; i < rows.length; i++) {
                     let row = rows[i]; if (!row[0]) continue;
                     let rawDistrict = row[6] ? String(row[6]).trim() : "";
+                    // 如果不是超級管理員，強制使用用戶所屬區域
+                    if (!isSuperAdmin && currentUserDistrict) {
+                        rawDistrict = currentUserDistrict;
+                    }
                     let district = standardizeDistrict(rawDistrict); 
                     let midnightFlag = String(row[5] || 'N').toUpperCase() === 'Y' ? 'Y' : 'N';
                     let telephone = String(row[8] || '').trim();
@@ -987,14 +1027,10 @@
             document.getElementById('loginTitle').innerHTML = '食環署車輛管理系統';
             document.getElementById('mainTitle').innerHTML = '食環署車輛管理系統';
             document.getElementById('loginBtn').innerHTML = '食環署登入';
-            document.getElementById('vehicleFormSection').style.display = 'block';
-            document.getElementById('batchSection').style.display = 'block';
         } else {
             document.getElementById('loginTitle').innerHTML = '環保署車輛管理系統';
             document.getElementById('mainTitle').innerHTML = '環保署車輛管理系統';
             document.getElementById('loginBtn').innerHTML = '環保署登入';
-            document.getElementById('vehicleFormSection').style.display = 'none';
-            document.getElementById('batchSection').style.display = 'none';
         }
         await loadUserList();
     }
