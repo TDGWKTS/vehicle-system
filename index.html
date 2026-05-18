@@ -364,7 +364,7 @@
 <div id="loadingOverlay" class="loading-overlay"><div class="spinner-border" role="status"></div><div class="loading-text">處理中，請稍後...</div></div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzmbQ6lJJMP0pjw12qizc0iYJ37Ez82j8wbB2EaJl2WPxuHTvlY37217-PFv6aEKSFu6A/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbz7CIHyunQagma4_nCYl9bXOpD5EcKTeJ5J57f4E91Jwt-dGEXWoacpGH8XNyohxTi3ow/exec";
     const DISTRICT_DICTIONARY = { "central & western":"Central & Western","central":"Central & Western","中西區":"Central & Western","wan chai":"Wan Chai","灣仔":"Wan Chai","eastern":"Eastern","東區":"Eastern","southern":"Southern","南區":"Southern","sham shui po":"Sham Shui Po","深水埗":"Sham Shui Po","mong kok":"Mong Kok","旺角":"Mong Kok","yau tsim mong":"Yau Tsim","油尖旺":"Yau Tsim","kowloon city":"Kowloon City","九龍城":"Kowloon City","wong tai sin":"Wong Tai Sin","黃大仙":"Wong Tai Sin","kwun tong":"Kwun Tong","觀塘":"Kwun Tong","tuen mun":"Tuen Mun","屯門":"Tuen Mun","yuen long":"Yuen Long","元朗":"Yuen Long","sha tin":"Sha Tin","沙田":"Sha Tin","kwai tsing":"Kwai Tsing","葵青":"Kwai Tsing","north":"North","北區":"North","tai po":"Tai Po","大埔":"Tai Po","sai kung":"Sai Kung","西貢":"Sai Kung","tsuen wan":"Tsuen Wan","荃灣":"Tsuen Wan","islands":"Islands","離島":"Islands"};
     function standardizeDistrict(d) { if(!d) return ""; let key=String(d).trim().toLowerCase(); return DISTRICT_DICTIONARY[key]||d; }
     
